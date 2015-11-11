@@ -1,5 +1,5 @@
 [paths]
-ena = /Users/NPK/UMCG/test/data/ENA/2015-06-08-ENA.txt
+ena = /Users/NPK/UMCG/projects/ENA/2015-06-08-ENA.txt
 runinfo_folder_qc = /Users/NPK/UMCG/projects/ATACseq/ATACseq/rundir/QC/
 runinfo_folder_genotypecalling = /Users/NPK/UMCG/projects/ATACseq/ATACseq/rundir/genotypeCalling/
 runinfo_folder_quantification = /Users/NPK/UMCG/projects/ATACseq/ATACseq/rundir/quantification/
@@ -16,4 +16,5 @@ remove_pass_file = True
 experiment_type = rna_seq
 new_pass_file = True
 password_location = ~
+max_rows = 1000
 

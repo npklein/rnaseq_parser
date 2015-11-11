@@ -3,7 +3,6 @@ Created on Jul 31, 2015
 
 @author: Niek
 '''
-import time
 tao = ['Thus spake the Master Programmer: "When you have learned to snatch the error code from the trap frame, it will be time for you to leave."',
        'Thus spake the Master Programmer: "After three days without programming, life becomes meaningless."',
        'Thus spake the Master Programmer: "When a program is being tested, it is too late to make design changes."',
@@ -13,8 +12,7 @@ tao = ['Thus spake the Master Programmer: "When you have learned to snatch the e
        'Thus spake the Master Programmer: "You can demonstrate a program for a corporate executive, but you can\'t make him computer literate."',
        'Thus spake the Master Programmer: "Without the wind, the grass does not move. Without software hardware is useless."',
        'Thus spake the Master Programmer: "Time for you to leave."']
-
-from PublicRNAseqParser import parse_output
+import time
 import argparse
 import random
 import configparser
@@ -89,6 +87,7 @@ parser.add_argument("--remove_pass_file", help="Remove the saved file with passw
 parser.add_argument("--password_location", help="Location to save password to (save it to a folder only you have access to. If not possible, make sure remove_pass_file is set to True in Config file)", default=configSectionMap('settings')['password_location'])
 parser.add_argument("--experiment_type", help="Change the experiment type in the Config file (rna_seq,atac_seq,pro_seq,unkown,hic-seq,dnase-seq,gro_seq)", default=configSectionMap("settings")['experiment_type'])
 parser.add_argument("--ENA_path", help="Change the path to ENA info file in the Config file", default=configSectionMap("paths")['ena'])
+parser.add_argument("--max_rows", help="Set the maximum amount of rows to be added at the same time", default=configSectionMap("settings")['max_rows'])
 args = parser.parse_args()
 if not (args.all or args.hisat or args.ena or args.variantEval or args.verifyBamID or args.verifyBamID or args.bqsr or args.analyseCovariates
         or args.addOrReplaceReadGroups or args.samToFilteredBam or args.sortBam or args.indelRealignmentKnown or args.gatkSplitNtrim
@@ -111,7 +110,12 @@ with open(r'PublicRNAseqParser/CONFIG','w') as configfile:
     config.set('settings','remove_pass_file',args.remove_pass_file)
     config.set('settings','password_location',args.password_location)
     config.set('settings','experiment_type',args.experiment_type)
+    config.set('settings','max_rows', args.max_rows)
     config.write(configfile)    
+# This is imported here because otherwise if --max_rows is used it won't be set until the second time you run it, as 
+# the input file will already be read
+from PublicRNAseqParser import parse_output
+
 
 print('Running parse_RNAseq_parser with configuration options:')
 print((open('PublicRNAseqParser/CONFIG').read()))
