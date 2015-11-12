@@ -13,7 +13,6 @@ import glob
 import datetime
 import zipfile
 import configparser
-from itertools import zip_longest
 config = configparser.RawConfigParser()
 config.read(r'PublicRNAseqParser/CONFIG')
 if __name__ == "__main__":
@@ -151,7 +150,7 @@ def parse_rnaseq_tools(sh_file_path,connection,package):
         raise OSError('Folder %s does not exist' % os.path.dirname(sh_file_path))
     sh_files = glob.glob(os.path.join(sh_file_path))
     if len(sh_files) == 0:
-        print ('For %s no files are found' % (sh_file_path))
+        raise ValueError ('For %s no files are found' % (sh_file_path))
     for sh_file in sh_files:
         sh_text = open(sh_file,'rb').read().decode("utf-8")
         split_sh = re.split('(## \S+ \S+ \d+:\d+:\d+ CEST \d+ ## \S+/slurm_script Started)',sh_text)
@@ -409,11 +408,12 @@ def parse_md5sums(connection, package):
         print('No .md5 files found in %s or its subdirectories' % project_folder)
 def parse_variantCaller(variant_caller, runinfo_folder_QC,connection,package):
     print('Start variantCaller')
+    pretext = ''
     if variant_caller != 'UnifiedGenotyper' and variant_caller != 'HaplotypeCaller' and variant_caller != 'GenotypeGvcf':
-        raise AttributeError('variant_caller not UnifiedGenotyper or HaplotypeCaller')
-    if variant_caller != 'GenotypeGvcf':
-        variant_caller = 'Gatk'+variant_caller
-    for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_QC,variant_caller+'*.sh'),connection,package):
+        raise AttributeError('variant_caller not UnifiedGenotyper, HaplotypeCaller or GenotypeGvcf')
+    if variant_caller == 'UnifiedGenotyper' or variant_caller == 'HaplotypeCaller':
+        pretext = 'Gatk'
+    for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_QC,pretext+variant_caller+'*.sh'),connection,package):
         if variant_caller != 'GenotypeGvcf':
             total_reads = re.search('out of approximately (\d+) total reads',err_text).group(1)
             reads_filtered_out = re.search('(\d+) reads were filtered out',err_text).group(1)
@@ -428,38 +428,40 @@ def parse_variantCaller(variant_caller, runinfo_folder_QC,connection,package):
                 search_result = re.search('(\d+) reads \((\d+.\d+)% of total\) failing '+reads_filter,err_text)
                 filtered[reads_filter] = {'p':search_result.group(2),'r':search_result.group(1)}
         vcf_file = re.search('-o (\S+.vcf)',sh_text).group(1)
+        sample_names = None
         with open(vcf_file) as vcf:
-            vcf_meta_ids = {'filters':'','info':'','formats':'','contigs':'','snps':'','alts':'','gvcf_block':''}
+            vcf_meta_ids = {'filters':[],'info':[],'formats':[],'contigs':[],'snps':[],'alts':[],'gvcf_block':[]}
+            reference = None
             for line in vcf:
                 line = line.strip()
                 if line.startswith('#'):
-                    #### Too much data in vcf file, cant use commented data
                     if '##contig' in line:
                         search_filter = re.search('ID=(\S+),length=(\d+),assembly=(\S+)>',line)
-                        vcf_meta_ids['contigs'] += connection.add_entity_rows(package+'Contigs',{'meta_id':search_filter.group(1),'length':search_filter.group(2),'assembly':search_filter.group(3)})+','
+                        vcf_meta_ids['contigs'] += [{'meta_id':search_filter.group(1),'length':search_filter.group(2),'assembly':search_filter.group(3)}]
                     elif '##INFO' in line:
                         search_filter = re.search('ID=(\S+),Number=(\S),Type=(\w+),Description="(.*?)">',line)
-                        vcf_meta_ids['info'] += connection.add_entity_rows(package+'Info',{'meta_id':search_filter.group(1),'number':search_filter.group(2),'type':search_filter.group(3).lower(),'description':search_filter.group(4)})+','
+                        vcf_meta_ids['info'] += [{'meta_id':search_filter.group(1),'number':search_filter.group(2),'type':search_filter.group(3).lower(),'description':search_filter.group(4)}]
                     elif '##FORMAT' in line:
                         search_filter = re.search('ID=(\S+),Number=(\S),Type=(\w+),Description="(.*?)">',line)
-                        vcf_meta_ids['formats'] += connection.add_entity_rows(package+'Formats',{'meta_id':search_filter.group(1),'number':search_filter.group(2),'type':search_filter.group(3).lower(),'description':search_filter.group(4)}) +','
+                        vcf_meta_ids['formats'] += [{'meta_id':search_filter.group(1),'number':search_filter.group(2),'type':search_filter.group(3).lower(),'description':search_filter.group(4)}]
                     elif '##FILTER' in line:
                         search_filter = re.search('ID=(\S+),Description="(.*?)">',line)
-                        vcf_meta_ids['filters'] += connection.add_entity_rows(package+'Filters',{'meta_id':search_filter.group(1),'description':search_filter.group(2)})+','
+                        vcf_meta_ids['filters'] += [{'meta_id':search_filter.group(1),'description':search_filter.group(2)}]
                     elif '##ALT' in line:
                         search_filter = re.search('ID=(\S+),Description="(.*?)">',line)
-                        vcf_meta_ids['alts'] += connection.add_entity_rows(package+'Alts',{'meta_id':search_filter.group(1),'description':search_filter.group(2)})+','
+                        vcf_meta_ids['alts'] += [{'meta_id':search_filter.group(1),'description':search_filter.group(2)}]
                     elif '##GVCFBlock' in line:
                         search_filter = re.search('GVCFBlock(\d+-\d+)=(\d+)\S+maxGQ=(\d+)',line)
-                        vcf_meta_ids['gvcf_block'] += connection.add_entity_rows(package+'Gvcf_block',{'gvcf_block_min':search_filter.group(1),'gvcf_block_max':search_filter.group(2), 'min_gq':search_filter.group(3),'max_gq':search_filter.group(4)})+','
+                        vcf_meta_ids['gvcf_block'] += [{'gvcf_block_min':search_filter.group(1),'gvcf_block_max':search_filter.group(2), 'min_gq':search_filter.group(3),'max_gq':search_filter.group(4)}]
                     elif 'fileformat=' in line:
                         fileformat = line.split('fileformat=')[1]
                     elif 'reference=' in line:
                         reference = line.split('reference=')[1]
                     elif '#CHROM' in line:
-                         sample_names = line.split('\t')[9:]
+                        sample_names = line.split('\t')[9:]
                     else:
                         break
+            #### Too much data in vcf file, cant use commented data
             #        s_l = line.split('\t')
             #        snp_per_sample = s_l[9:]
             #        snp_per_sample_id = ''
@@ -467,8 +469,32 @@ def parse_variantCaller(variant_caller, runinfo_folder_QC,connection,package):
             #            snp_per_sample_id += connection.add_entity_rows(package+'public_rnaseq_Snp_per_sample',data = {'sample_name':sample_name,'snp_info':snp_info})+','
             #        snp_per_sample_id = snp_per_sample_id.rstrip(',')
             #        vcf_meta_ids['snps'] += connection.add_entity_rows(package+'Snp_info',{'chrom':s_l[0].replace('X','23').replace('Y','24'),'pos':s_l[1],'id':s_l[2],'ref':s_l[3],'alt':s_l[4],'qual':s_l[5],'filter':s_l[6],'info':s_l[7],'format':s_l[8],'snp_per_sample':snp_per_sample_id})+','
-            for k in vcf_meta_ids: vcf_meta_ids[k] = vcf_meta_ids[k].rstrip(',')
-            data = {'fileformat':fileformat,'contigs':vcf_meta_ids['contigs'],'filters':vcf_meta_ids['filters'],'formats':vcf_meta_ids['formats'],'reference':reference,'snps':vcf_meta_ids['snps'],'gvcf_block':vcf_meta_ids['gvcf_block']}
+            if vcf_meta_ids['contigs']:
+                contig_ids = ','.join(add_multiple_rows(entity=package+'Contigs',data_list=vcf_meta_ids['contigs'], connection=connection))
+            else:
+                contig_ids = None
+            if vcf_meta_ids['info']:
+                info_id = add_multiple_rows(entity=package+'Info',data_list=vcf_meta_ids['info'], connection=connection)
+            else:
+                info_id = None
+            if vcf_meta_ids['formats']:
+                format_ids = ','.join(add_multiple_rows(entity=package+'Formats',data_list=vcf_meta_ids['formats'], connection=connection))
+            else:
+                format_ids = None
+            if vcf_meta_ids['filters']:
+                filter_ids = ','.join(add_multiple_rows(entity=package+'Filters',data_list=vcf_meta_ids['filters'], connection=connection))
+            else:
+                filter_ids = None
+            if vcf_meta_ids['alts']:
+                alt_ids = ','.join(add_multiple_rows(entity=package+'Alts',data_list=vcf_meta_ids['alts'], connection=connection))
+            else:
+                alt_ids = None
+            if vcf_meta_ids['gvcf_block']:
+                gvcf_blck_ids = ','.join(add_multiple_rows(entity=package+'Gvcf_block',data_list=vcf_meta_ids['gvcf_block'], connection=connection))
+            else:
+                gvcf_blck_ids = None
+            data = {'fileformat':fileformat,'contigs':contig_ids,'filters':filter_ids,'formats':format_ids,'reference':reference,
+                    'alts':alt_ids,'gvcf_block':gvcf_blck_ids,'info':info_id}
             added_id = connection.add_entity_rows(package+'Vcf',data)
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id),'type':variant_caller} # 'vcf':added_id,
         if variant_caller != 'GenotypeGvcf':
@@ -479,14 +505,17 @@ def parse_variantCaller(variant_caller, runinfo_folder_QC,connection,package):
             data.update(extra_data)
         if variant_caller == 'HaplotypeCaller':
             data.update({'hc_mapping_quality_filter':filtered['HCMappingQualityFilter']['r'],'hc_mapping_quality_perc':filtered['HCMappingQualityFilter']['p']})
-        elif variant_caller == 'UnifiedGenotyper':
+        if variant_caller == 'UnifiedGenotyper':
             data.update({'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId})
-        added_id = connection.add_entity_rows(package+'VariantCaller', data)
+        added_id = connection.add_entity_rows(package+'VariantCaller', data,ignore_duplicates=True)[0]
         if variant_caller == 'UnifiedGenotyper':
             unifiedGenotyper_data = connection.query_entity_rows(package+'VariantCaller', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
             if len(unifiedGenotyper_data['items']) >0 and len(unifiedGenotyper_data['items'][0]['id']) > 0:
                 added_id = unifiedGenotyper_data['items'][0]['id']+','+added_id
-        for sample_name in sample_names:
+        if sample_names:
+            for sample_name in sample_names:
+                connection.update_entity_rows(package+'Samples', data={'variantCaller':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
+        else:
             connection.update_entity_rows(package+'Samples', data={'variantCaller':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
 def parse_fastqc(runinfo_folder_QC,connection,package):
     '''not working yet, row too long'''
