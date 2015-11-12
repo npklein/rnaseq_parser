@@ -45,15 +45,29 @@ def add_multiple_rows(entity, data_list,connection,ignore_duplicates=False):
     added_ids = []
     for data in chunker(data_list,int(configSectionMap("settings")['max_rows'])):
         # merge the lists of returned IDs
-        try:
-            added_ids += connection.add_entity_rows(entity,data_list=data)
-        except Exception as e:
-            if ignore_duplicates and 'Duplicate value' in str(e):
-                warnings.warn('Duplicate '+str(e).split('Duplicate')[1])
-            else:
-                raise
+        added_ids += connection.add_entity_rows(entity,data_list=data, ignore_duplicates=True)
     return added_ids
-        
+def add_file(file_path, description, entity, extra_data,connection,ignore_duplicates=False):
+    '''Helper function for adding a file
+    
+    Args:
+        file_path (string): Path of file ot add
+        description (string): Description of the file
+        entity (string): Name of the entity to add file to
+        extra_data (dict): Extra data to add to entity
+        connection (obj): Connection object
+        ignore_duplicates (bool): If True, warn of duplicate instead of giving error
+    Returns:
+        list of added IDs
+    '''
+    try:
+        added_id = connection.add_file(file_path,description, entity,extra_data=extra_data,ignore_duplicates=ignore_duplicates)
+    except Exception as e:
+        if ignore_duplicates and 'Duplicate value' in str(e):
+            warnings.warn('Duplicate '+str(e).split('Duplicate')[1])
+        else:
+            raise
+    return added_id
 def parse_ena(ena_file,connection,package):
     '''finished'''
     print ('Start ENA')
@@ -94,7 +108,6 @@ def parse_ena(ena_file,connection,package):
     
                         column += '_1'
                 data[column] = value
-            #try:
             to_add.append(data)
 
         add_multiple_rows(entity=package+'ENA',data_list=to_add,connection=connection)
@@ -142,20 +155,17 @@ def parse_rnaseq_tools(sh_file_path,connection,package):
     for sh_file in sh_files:
         sh_text = open(sh_file,'rb').read().decode("utf-8")
         split_sh = re.split('(## \S+ \S+ \d+:\d+:\d+ CEST \d+ ## \S+/slurm_script Started)',sh_text)
-        for txt in split_sh:
-            print (txt)
-            print ('\n\n\n\n\n\n\n\n')
-        exit()
         if len(split_sh) > 2:
             sh_text = split_sh[-1] 
 
-        tool_ids = ''
         tools = re.findall('module load (\S+)/(\S+)',sh_text)
+        to_add = []
         for tool in tools:
             name = tool[0]
             version = tool[1]
-            tool_ids += connection.add_entity_rows(package+'Tools',{'id':name+'-'+version,'tool_name':name,'version':version})+','
-        tool_ids = tool_ids.rstrip(',')
+            to_add.append({'id':name+'-'+version,'tool_name':name,'version':version})
+        tool_ids = ','.join(add_multiple_rows(entity=package+'Tools',data_list=to_add, 
+                                connection=connection, ignore_duplicates=True))          
         basefile = os.path.splitext(sh_file)[0]
         err_text = open(basefile+'.err','rb').read().decode("utf-8") 
         out_text = open(basefile+'.out','rb').read().decode("utf-8") 
@@ -175,11 +185,17 @@ def parse_rnaseq_tools(sh_file_path,connection,package):
             internalId = None
         project = re.search('project="(.*?)"',sh_text).group(1)
         if not sh_id:
-            sh_id = connection.add_file(sh_file,'.sh script that was used to get the data', package+'File',extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+sh_file.replace(' ','_')})
+            sh_id = add_file(sh_file,'.sh script that was used to get the data', package+'File',
+                             extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+sh_file.replace(' ','_')},
+                             connection=connection, ignore_duplicates=True)[0]
         if not err_id:
-            err_id = connection.add_file(basefile+'.err', 'file with messages printed to stderr by program', package+'File',extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.err').replace(' ','_')})
+            err_id = add_file(basefile+'.err', 'file with messages printed to stderr by program', package+'File',
+                              extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.err').replace(' ','_')},
+                              connection=connection,ignore_duplicates=True)[0]
         if not out_id:
-            out_id = connection.add_file(basefile+'.out', 'file with messages printed to stdout by program',package+'File',extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.out').replace(' ','_')})
+            out_id = add_file(basefile+'.out', 'file with messages printed to stdout by program',package+'File',
+                     extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.out').replace(' ','_')},
+                     connection=connection,ignore_duplicates=True)[0]
         yield sh_text, err_text, out_text, runtime, sample_name, internalId, project, sh_id, err_id, out_id, tool_ids
 def parse_depth_or_self(entity,depth_or_self_file,file_type,connection,package):
     '''parse depthRG or depthSM file'''
@@ -202,13 +218,7 @@ def parse_depth_or_self(entity,depth_or_self_file,file_type,connection,package):
                 if value != 'NA' and value != 'NaN':
                     data_sanitized[key] = value
             to_add.append(data_sanitized)
-            if count >= MAX_ROWS:
-                # merge the lists of IDs
-                depthIDs += connection.add_entity_rows(package+entity,data=to_add)
-                count = 0
-                to_add = []
-        if len(to_add) > 0:
-            depthIDs += connection.add_entity_rows(package+entity,data=to_add)
+        depthIDs = add_multiple_rows(package+entity, to_add, connection, False)
     return depthIDs
 def parse_verifyBamID(runinfo_folder_QC,connection,package):
     '''finished'''
@@ -228,7 +238,7 @@ def parse_verifyBamID(runinfo_folder_QC,connection,package):
             avg_depth = groups.group(5)
             self_only_sample_ID = groups.group(1)
             self_only = bool(re.search('selfOnly option applied',out_text))
-            skipped_marker = ''
+            to_add = []
             for skipped_marker_line in re.findall('Skipping.*?\n',verifyBamID_log_text):
                 if len(skipped_marker_line.strip()) == 0:
                     continue
@@ -237,12 +247,14 @@ def parse_verifyBamID(runinfo_folder_QC,connection,package):
                 chromosome = chromosome.replace('Y','24')
                 marker_type = 'no_autosomal' if 'no-autosomal' in skipped_marker_line else 'multiple_allele'
                 position = groups.group(2)
-                skipped_marker += connection.add_entity_rows(package+'Skipped_marker',{'chromosome':chromosome,'type':marker_type,'position':position})+','
-            skipped_marker = skipped_marker.rstrip(',')
+                to_add.append({'chromosome':chromosome,'type':marker_type,'position':position})
+            skipped_marker = ','.join(add_multiple_rows(entity=package+'Skipped_marker',data_list=to_add,
+                                                        connection=connection,ignore_duplicates=False))
             pattern = '(Comparing with individual \S+.. Optimal fIBD = \d+\.\d+, LLK0 = \d+\.\d+, LLK1 = \d+\.\d+ for readgroup \d+\n'\
                      +'Best Matching Individual is NA with IBD = \d+.\d+\n'\
                      +'Self Individual is NA with IBD = \d+.\d+)'
             verifyBamID_individual = ''
+            to_add = []
             for individual in re.findall(pattern, verifyBamID_log_text):
                 groups = re.search('Optimal fIBD = (\d+\.\d+).*?'\
                                   +'LLK0 = (\d+\.\d+).*?'\
@@ -254,20 +266,21 @@ def parse_verifyBamID(runinfo_folder_QC,connection,package):
                                   +'Self Individual is \S+ with IBD = (\d+.\d+)',individual,re.DOTALL)
                 data = {'optimal_fIBD':groups.group(1),'llk0':groups.group(2),'llk1':groups.group(3),'readgroup':groups.group(4),'best_matching_individual':groups.group(5),
                         'best_match_individual_IBD':groups.group(6),'self_individual':groups.group(7),'self_individual_IBD':groups.group(8)}
-                verifyBamID_individual += connection.add_entity_rows(package+'VerifyBamID_individual', data)+','
-            verifyBamID_individual = verifyBamID_individual.rstrip(',')
-        depthRG = parse_depth_or_self('DepthRG',verifyBamID_output_path+'.depthRG','depth', connection,package)
-        depthSM = parse_depth_or_self('DepthSM',verifyBamID_output_path+'.depthSM','depth', connection,package)
-        selfRG = parse_depth_or_self('SelfRG',verifyBamID_output_path+'.selfRG','self', connection,package)
-        selfSM = parse_depth_or_self('SelfSM',verifyBamID_output_path+'.selfSM','self', connection,package)
+                to_add.append(data)
+            verifyBamID_individual = ','.join(add_multiple_rows(package+'VerifyBamID_individual', to_add,connection,False))
+        depthRG = ','.join(parse_depth_or_self('DepthRG',verifyBamID_output_path+'.depthRG','depth', connection,package))
+        depthSM = ','.join(parse_depth_or_self('DepthSM',verifyBamID_output_path+'.depthSM','depth', connection,package))
+        selfRG = ','.join(parse_depth_or_self('SelfRG',verifyBamID_output_path+'.selfRG','self', connection,package))
+        selfSM = ','.join(parse_depth_or_self('SelfSM',verifyBamID_output_path+'.selfSM','self', connection,package))
         multiple_allele_skip = len(re.findall('with multiple alternative alleles', err_text))
         no_autosomal_skip = len(re.findall('Skipping no-autosomal marker',err_text))
         data = {'multiple_allele_skip':multiple_allele_skip,'no_autosomal_skip':no_autosomal_skip,'sh_script':sh_id, 'depthRG':depthRG,
                 'out_file':out_id,'err_file':err_id,'runtime':runtime, 'depthSM':depthSM,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
-                'number_of_markers':number_of_markers,'number_of_informative_markers':number_of_informative_markers,
+                'number_of_markers':number_of_markers,'number_of_informative_markers':number_of_informative_markers,'verifyBamID_individual':verifyBamID_individual,
                 'selfRG':selfRG,'selfSM':selfSM,'extracted_bases':extracted_bases,'avg_depth':avg_depth,'skipped_marker':skipped_marker,
                 'self_only':self_only,'self_only_sample_ID':self_only_sample_ID, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}        
-        added_id = connection.add_entity_rows(package+'VerifyBamID', data)
+        added_id = connection.add_entity_rows(package+'VerifyBamID', data,ignore_duplicates=True)[0]
+        # if this sample already had a verifyBamId, find it, append the new one, and update sample row
         verifybamid_data = connection.query_entity_rows(package+'VerifyBamID', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(verifybamid_data['items']) >0 and len(verifybamid_data['items'][0]['id']) > 0:
             added_id = verifybamid_data['items'][0]['id']+','+added_id

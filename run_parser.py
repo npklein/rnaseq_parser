@@ -122,8 +122,7 @@ print((open('PublicRNAseqParser/CONFIG').read()))
   
 with molgenis.Connect_Molgenis(configSectionMap('settings')['server'],
                                 remove_pass_file = configSectionMap('settings')['remove_pass_file'],
-                                new_pass_file = configSectionMap('settings')['new_pass_file'],
-                                only_warn_duplicates = True) as connection:
+                                new_pass_file = configSectionMap('settings')['new_pass_file']) as connection:
     connection._add_datetime_default = True
     connection._added_by_default = True
     connection._updated_by_default = True
@@ -166,13 +165,8 @@ with molgenis.Connect_Molgenis(configSectionMap('settings')['server'],
     elif args.delete_entity:
         connection.delete_all_entity_rows(configSectionMap('settings')['package']+args.delete_entity)
     # always make sure analysis exists
-    try:
-        connection.add_entity_row(package+'Analysis_info', {'id':configSectionMap('settings')['analysis_id'], 'analysis_description':configSectionMap('settings')['analysis_description']})
-    except Exception as e:
-        if 'Duplicate value' in str(e):
-            pass
-        else:
-            raise
+    connection.add_entity_rows(package+'Analysis_info', {'id':configSectionMap('settings')['analysis_id'], 'analysis_description':configSectionMap('settings')['analysis_description']},ignore_duplicates=True)
+
     start_time = time.time()
     print('\n'+'~'*10+'STARTING'+'~'*10+'\n')
     parse_output.parse_samples( configSectionMap('paths')['samplesheet'],connection,package=package,experiment_type=configSectionMap('settings')['experiment_type'])
