@@ -47,27 +47,27 @@ def add_multiple_rows(entity, data_list,connection,ignore_duplicates=False):
         # merge the lists of returned IDs
         added_ids += connection.add_entity_rows(entity,data_list=data, ignore_duplicates=True)
     return added_ids
-def add_file(file_path, description, entity, extra_data,connection,ignore_duplicates=False):
-    '''Helper function for adding a file
-    
-    Args:
-        file_path (string): Path of file ot add
-        description (string): Description of the file
-        entity (string): Name of the entity to add file to
-        extra_data (dict): Extra data to add to entity
-        connection (obj): Connection object
-        ignore_duplicates (bool): If True, warn of duplicate instead of giving error
-    Returns:
-        list of added IDs
-    '''
-    try:
-        added_id = connection.add_file(file_path,description, entity,extra_data=extra_data,ignore_duplicates=ignore_duplicates)
-    except Exception as e:
-        if ignore_duplicates and 'Duplicate value' in str(e):
-            warnings.warn('Duplicate '+str(e).split('Duplicate')[1])
-        else:
-            raise
-    return added_id
+#def add_file(file_path, description, entity, extra_data,connection,ignore_duplicates=False):
+#    '''Helper function for adding a file
+#    
+#    Args:
+#        file_path (string): Path of file ot add
+#        description (string): Description of the file
+#        entity (string): Name of the entity to add file to
+#        extra_data (dict): Extra data to add to entity
+#        connection (obj): Connection object
+#        ignore_duplicates (bool): If True, warn of duplicate instead of giving error
+#    Returns:
+#        list of added IDs
+#    '''
+#    try:
+#        added_id = connection.add_file(file_path,description, entity,extra_data=extra_data,ignore_duplicates=ignore_duplicates)
+#    except Exception as e:
+#        if ignore_duplicates and 'Duplicate value' in str(e):
+#            warnings.warn('Duplicate '+str(e).split('Duplicate')[1])
+#        else:
+#            raise
+#    return added_id
 def parse_ena(ena_file,connection,package):
     '''finished'''
     print ('Start ENA')
@@ -185,17 +185,18 @@ def parse_rnaseq_tools(sh_file_path,connection,package):
             internalId = None
         project = re.search('project="(.*?)"',sh_text).group(1)
         if not sh_id:
-            sh_id = add_file(sh_file,'.sh script that was used to get the data', package+'File',
+            sh_id = connection.add_file(basefile+'.sh','.sh script that was used to get the data', package+'File',
                              extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+sh_file.replace(' ','_')},
-                             connection=connection, ignore_duplicates=True)[0]
+                             ignore_duplicates=True)[0] 
+            
         if not err_id:
-            err_id = add_file(basefile+'.err', 'file with messages printed to stderr by program', package+'File',
+            err_id = connection.add_file(basefile+'.err', 'file with messages printed to stderr by program', package+'File',
                               extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.err').replace(' ','_')},
-                              connection=connection,ignore_duplicates=True)[0]
+                              ignore_duplicates=True)[0]
         if not out_id:
-            out_id = add_file(basefile+'.out', 'file with messages printed to stdout by program',package+'File',
+            out_id = connection.add_file(basefile+'.out', 'file with messages printed to stdout by program',package+'File',
                      extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.out').replace(' ','_')},
-                     connection=connection,ignore_duplicates=True)[0]
+                     ignore_duplicates=True)[0]
         yield sh_text, err_text, out_text, runtime, sample_name, internalId, project, sh_id, err_id, out_id, tool_ids
 def parse_depth_or_self(entity,depth_or_self_file,file_type,connection,package):
     '''parse depthRG or depthSM file'''
@@ -306,7 +307,7 @@ def parse_hisat(runinfo_folder_QC,connection,package):
                 'number_mates':groups.group(13),'mates_aligned_0_times':groups.group(14),'mates_aligned_0_times_p':groups.group(15),'mates_aligned_1_time':groups.group(16),'mates_aligned_1_time_p':groups.group(17),
                 'mates_aligned_multiple':groups.group(18),'mates_aligned_multiple_p':groups.group(19),'overall_alignment_rate':groups.group(20),'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
                 'sh_script':sh_id,'out_file':out_id,'err_file':err_id,'runtime':runtime, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'Hisat', data)
+        added_id = connection.add_entity_rows(package+'Hisat', data,ignore_duplicates=True)[0]
         hisat_data = connection.query_entity_rows(package+'Hisat', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(hisat_data['items']) >0 and len(hisat_data['items'][0]['id']) > 0:
             added_id = hisat_data['items'][0]['id']+','+added_id
