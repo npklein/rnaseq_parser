@@ -562,7 +562,6 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
                                  +'Adapter Content.*?\n(.*?)\n\>\>END_MODULE.*?'\
                                  +'Kmer Content.*?\n(.*?)\n\>\>END_MODULE', fastqc_data.decode('utf-8'),re.DOTALL)
         
-        exit()
         fastqc_ids = {'pbsq':'','ptsq':'','psqs':'','pbsc':'','psgc':'','pbnc':'','sld':'','sdl':'','os':'','ac':'','kc':''}
         to_add = []
         for line in fastqc_groups.group(8).split('\n')[1:]:
@@ -635,7 +634,7 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
                 'seq_duplication_levels_check':image_data['Sequence Duplication Levels'][1],'seq_length_min':fastqc_groups.group(6).split('-')[0],'seq_length_distribution':fastqc_ids['sld'].rstrip(','),
                 'seq_length_distribution_check':image_data['Sequence Length Distribution'][1],'seqs_flagged_as_poor':fastqc_groups.group(5),'total_seqs':fastqc_groups.group(4),'seq_length_max':fastqc_groups.group(6).split('-')[1],'file_name':fastqc_groups.group(2),'file_type':fastqc_groups.group(2),'encoding':fastqc_groups.group(3),
                 'err_file':err_id,'out_file':out_id,'runtime':runtime,'sh_script':sh_id,'internalId':internalId,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name)}
-        added_id = connection.add_entity_rows(package+'FastQC', data)
+        added_id = connection.add_entity_rows(package+'FastQC', data)[0]
         fastqc_data = connection.query_entity_rows(package+'fastqc', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(fastqc_data['items']) >0 and len(fastqc_data['items'][0]['id']) > 0:
             added_id = fastqc_data['items'][0]['id']+','+added_id

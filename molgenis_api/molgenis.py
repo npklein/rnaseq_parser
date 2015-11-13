@@ -394,7 +394,7 @@ class Connect_Molgenis():
 
                 self.added_files += 1
                 self.session.headers = old_header
-                added_id = self._add_entity_rows_or_file_server_response(entity_name, data, server_response,'file',ignore_duplicates=ignore_duplicates)
+                added_id = self._add_entity_rows_or_file_server_response(entity_name, data, server_response,'file', api_version='v1',ignore_duplicates=ignore_duplicates)
                 return added_id
                 
             def query_entity_rows(self, entity_name, query):
