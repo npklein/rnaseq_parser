@@ -537,6 +537,7 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
                     description = os.path.basename(os.path.splitext(name)[0])
                     img_data = archive.open(name)
                     names.append(description)
+                    print(description)
                     graphs[description] = connection.add_file(name, description,package+'File', io_stream = img_data,
                                                               extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+name.replace(' ','_')},
                                                               ignore_duplicates=True)
@@ -560,6 +561,8 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
                                  +'Overrepresented sequences.*?\n(.*?)\n\>\>END_MODULE.*?'\
                                  +'Adapter Content.*?\n(.*?)\n\>\>END_MODULE.*?'\
                                  +'Kmer Content.*?\n(.*?)\n\>\>END_MODULE', fastqc_data.decode('utf-8'),re.DOTALL)
+        
+        exit()
         fastqc_ids = {'pbsq':'','ptsq':'','psqs':'','pbsc':'','psgc':'','pbnc':'','sld':'','sdl':'','os':'','ac':'','kc':''}
         to_add = []
         for line in fastqc_groups.group(8).split('\n')[1:]:
@@ -574,7 +577,7 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
         to_add = []
         for line in fastqc_groups.group(10).split('\n')[1:]:
             s_l = line.split('\t')
-            to_add.apped({'quality':s_l[0], 'count':s_l[1]})
+            to_add.append({'quality':s_l[0], 'count':s_l[1]})
         fastqc_ids['psqs'] = ','.join(add_multiple_rows(package+'Per_sequence_quality_scores',to_add,connection,True))
         to_add = []
         for line in fastqc_groups.group(11).split('\n')[1:]:
@@ -618,7 +621,7 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
             to_add.append({'seq':s_l[0], 'count':s_l[1], 'p_value':s_l[2], 'obs_exp_max':s_l[3], 'max_obs_exp_position':s_l[4]})
         fastqc_ids['kc'] = ','.join(add_multiple_rows(package+'Kmer_content',to_add,connection,True))
 
-        data = {'adapter_content_graph':graphs['adapter_content'][0],'kmer_content_graph':graphs['kmer_profiles'][0],'overrepresented_seqs_graph':graphs['overrepresented_sequences'][0],'per_base_n_content_graph':graphs['per_base_n_content'][0],
+        data = {'adapter_content_graph':graphs['adapter_content'][0],'kmer_content_graph':graphs['kmer_profiles'][0],'per_base_n_content_graph':graphs['per_base_n_content'][0],
                 'per_base_seq_content_graph':graphs['per_base_sequence_content'][0],'per_base_seq_qual_graph':graphs['per_base_quality'][0],'per_seq_GC_content_graph':graphs['per_sequence_gc_content'][0],
                 'per_seq_qual_scores_graph':graphs['per_sequence_quality'][0],'per_tile_seq_qual_graph':graphs['per_tile_quality'][0],'seq_duplication_levels_graph':graphs['duplication_levels'][0],
                 'seq_length_distribution_graph':graphs['sequence_length_distribution'][0],
