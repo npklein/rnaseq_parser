@@ -337,9 +337,6 @@ class Connect_Molgenis():
                 # post to the entity with the json data
                 server_response = self.session.post(request_url, data=json.dumps({"entities":sanitized_data_list}))
                 self.added_rows += len(sanitized_data_list)
-                if entity_name == 'public_rnaseq_Info':
-                    print(data_list)
-                    exit()
                 added_ids = self._add_entity_rows_or_file_server_response(entity_name, data_list, server_response,'entity_row','v2',ignore_duplicates=ignore_duplicates)
                 return added_ids
             def add_file(self, file_path, description, entity_name, extra_data=None, file_name=None, add_datetime=False, datetime_column='datetime_added', added_by=None, added_by_column='added_by', io_stream = None,ignore_duplicates=False):

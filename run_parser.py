@@ -212,9 +212,9 @@ with molgenis.Connect_Molgenis(configSectionMap('settings')['server'],
     if args.fastqc:
         parse_output.parse_fastqc(rundir_QC, connection, package)
     if args.markDuplicates:
-        parse_output.parse_fastqc(rundir_genotypeCalling, connection, package)
+        parse_output.parse_markDuplicates(rundir_genotypeCalling, connection, package)
     if args.flagstat:
-        parse_output.parse_fastqc(rundir_genotypeCalling, connection, package)
+        parse_output.parse_flagstat(rundir_genotypeCalling, connection, package)
     if args.combineBed:
         parse_output.parse_combineBedFiles(rundir_QC, connection, package)
     if args.md5sum:

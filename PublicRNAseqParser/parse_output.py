@@ -46,27 +46,6 @@ def add_multiple_rows(entity, data_list,connection,ignore_duplicates=False):
         # merge the lists of returned IDs
         added_ids += connection.add_entity_rows(entity,data_list=data, ignore_duplicates=True)
     return added_ids
-#def add_file(file_path, description, entity, extra_data,connection,ignore_duplicates=False):
-#    '''Helper function for adding a file
-#    
-#    Args:
-#        file_path (string): Path of file ot add
-#        description (string): Description of the file
-#        entity (string): Name of the entity to add file to
-#        extra_data (dict): Extra data to add to entity
-#        connection (obj): Connection object
-#        ignore_duplicates (bool): If True, warn of duplicate instead of giving error
-#    Returns:
-#        list of added IDs
-#    '''
-#    try:
-#        added_id = connection.add_file(file_path,description, entity,extra_data=extra_data,ignore_duplicates=ignore_duplicates)
-#    except Exception as e:
-#        if ignore_duplicates and 'Duplicate value' in str(e):
-#            warnings.warn('Duplicate '+str(e).split('Duplicate')[1])
-#        else:
-#            raise
-#    return added_id
 def parse_ena(ena_file,connection,package):
     '''finished'''
     print ('Start ENA')
@@ -115,7 +94,6 @@ def parse_samples(sample_sheet_path,connection,package,experiment_type, ignore_d
     print ('Start Samples')
     sample_sheet_file = open(sample_sheet_path)
     column_names = sample_sheet_file.readline().strip('\n').split(',')
-    count = 0
     to_add = []
     for line in sample_sheet_file:
         line = line.strip()
@@ -186,7 +164,7 @@ def parse_rnaseq_tools(sh_file_path,connection,package):
         if not sh_id:
             sh_id = connection.add_file(basefile+'.sh','.sh script that was used to get the data', package+'File',
                              extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+sh_file.replace(' ','_')},
-                             ignore_duplicates=True)[0] 
+                             ignore_duplicates=True)[0]
         if not err_id:
             err_id = connection.add_file(basefile+'.err', 'file with messages printed to stderr by program', package+'File',
                               extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.err').replace(' ','_')},
@@ -621,7 +599,7 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
 
         data = {'adapter_content_graph':graphs['adapter_content'],'kmer_content_graph':graphs['kmer_profiles'],'per_base_n_content_graph':graphs['per_base_n_content'],
                 'per_base_seq_content_graph':graphs['per_base_sequence_content'],'per_base_seq_qual_graph':graphs['per_base_quality'],'per_seq_GC_content_graph':graphs['per_sequence_gc_content'],
-                'per_seq_qual_scores_graph':graphs['per_sequence_quality'][0],'per_tile_seq_qual_graph':graphs['per_tile_quality'],'seq_duplication_levels_graph':graphs['duplication_levels'],
+                'per_seq_qual_scores_graph':graphs['per_sequence_quality'],'per_tile_seq_qual_graph':graphs['per_tile_quality'],'seq_duplication_levels_graph':graphs['duplication_levels'],
                 'seq_length_distribution_graph':graphs['sequence_length_distribution'],
                 'total_deduplicated_perc':total_deduplicated_perc,'adapter_content':fastqc_ids['ac'].rstrip(','),'adapter_content_check':image_data['Adapter Content'][1],'basic_statistics_check':image_data['Basic Statistics'][1],'gc_perc':fastqc_groups.group(7),
                 'kmer_content':fastqc_ids['kc'].rstrip(','),'kmer_content_check':image_data['Kmer Content'][1],'overrepresented_seqs':fastqc_ids['os'].rstrip(','),
@@ -651,21 +629,23 @@ def parse_markDuplicates(runinfo_folder_genotypeCalling,connection,package):
         with open(mark_duplicates_log) as log_file:
             log = log_file.read()
             groups = re.search('METRICS CLASS(.*?)## HISTOGRAM(.*?)',log,re.DOTALL)
+            to_add = []
             for line in groups.group(1).split('\n'):
                 if not line.startswith('LIBRARY') and not line.startswith('##') and len(line.split('\t')[0].strip()) > 0:
                     s_l = line.split('\t')
-                    data = {'library':s_l[0],'unpaired_reads_examined':s_l[1],'reads_pairs_examined':s_l[2],'unmapped_reads':s_l[3],'unpaired_read_duplicates':s_l[4],
-                            'read_pair_duplicates':s_l[5],'read_pair_optical_duplicates':s_l[6],'percent_duplication':s_l[7],'estimated_library_size':s_l[8]}
-                    duplication_metrics += connection.add_entity_rows(package+'Duplication_metrics', data)+','
+                    to_add.append({'library':s_l[0],'unpaired_reads_examined':s_l[1],'reads_pairs_examined':s_l[2],'unmapped_reads':s_l[3],'unpaired_read_duplicates':s_l[4],
+                                   'read_pair_duplicates':s_l[5],'read_pair_optical_duplicates':s_l[6],'percent_duplication':s_l[7],'estimated_library_size':s_l[8]})
+            duplication_metrics = ','.join(add_multiple_rows(package+'Duplication_metrics', to_add,connection,True))
+            to_add = []
             for line in groups.group(2).split('\n'):
                 if not line.startswith('##') and not line.startswith('BIN') and len(line.strip()) > 0:
-                    data = {'bin':line.split('\t')[0],'value':line.split('\t')[1]}
-                    markduplicates_histogram += connection.add_entity_rows(package+'MarkDuplicates_histogram',data)+','
+                    to_add.append({'bin':line.split('\t')[0],'value':line.split('\t')[1]})
+            markduplicates_histogram = ','.join(add_multiple_rows(package+'MarkDuplicates_histogram',to_add,connection,True))
 
         data = {'duplicates':duplicates,'optical_duplicate_clusters':optical_duplicate_clusters,
                 'duplication_metrics':duplication_metrics.rstrip(','), 'markduplicates_histogram':markduplicates_histogram.rstrip(','),
                 'err_file':err_id,'out_file':out_id,'runtime':runtime,'sh_script':sh_id}
-        added_id = connection.add_entity_rows(package+'MarkDuplicates', data)   
+        added_id = connection.add_entity_rows(package+'MarkDuplicates', data)[0]
         connection.update_entity_rows(package+'Samples', query_list = [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}], data = {'markDuplicates':added_id})
 def parse_bqsr(runinfo_folder_genotypeCalling,connection,package):
     '''finished'''
@@ -687,7 +667,8 @@ def parse_bqsr(runinfo_folder_genotypeCalling,connection,package):
                 recal_0 = ''
                 recal_1 = ''
                 recal_2 = ''
-                skip_line = False 
+                skip_line = False
+                to_add_dict = {'Arguments':[],'Quantized':[],'Recal_table_0':[],'Recal_table_1':[],'Recal_table_2':[]}
                 for line in grp:
                     if skip_line:
                         skip_line = False
@@ -701,23 +682,21 @@ def parse_bqsr(runinfo_folder_genotypeCalling,connection,package):
                         recal_table_2 = False
                     s_l = line.split()
                     if arguments_table:
-                        data = {'argument':s_l[0],'value':s_l[1]}
-                        arguments += connection.add_entity_rows(package+'Arguments',data)+','
+                        to_add_dict['Arguments'].append({'argument':s_l[0],'value':s_l[1]})
                     elif quantized_table:
-                        data = {'quality_score':s_l[0],'count':s_l[1],'quantized_score':s_l[2]}
-                        quantized += connection.add_entity_rows(package+'Quantized',data)+','
+                        to_add_dict['Quantized'].append({'quality_score':s_l[0],'count':s_l[1],'quantized_score':s_l[2]})
                     elif recal_table_0:
                         data = {'event_type':s_l[1],'empirical_quality':s_l[2],'estimated_q_reported':s_l[3],
                                 'errors':s_l[4],'observations':s_l[5]}
-                        recal_0 += connection.add_entity_rows(package+'Recal_table_0',data)+','
+                        to_add_dict['Recal_table_0'].append(data)
                     elif recal_table_1:
                         data = {'quality_score':s_l[1],'event_type':s_l[2],'empirical_quality':s_l[3],
                                 'observations':s_l[4],'errors':s_l[5]}
-                        recal_1 += connection.add_entity_rows(package+'Recal_table_1',data)+','
+                        to_add_dict['Recal_table_1'].append(data)
                     elif recal_table_2:
                         data = {'quality_score':s_l[1],'covariate_value':s_l[2],'covariate_name':s_l[3],
                                 'event_type':s_l[4],'empirical_quality':s_l[5],'observations':s_l[6],'errors':s_l[7]}
-                        recal_2 += connection.add_entity_rows(package+'Recal_table_2',data)+','
+                        to_add_dict['Recal_table_2'].append(data)
                         #recal_table_2 = False
                     elif 'GATKTable:Arguments' in line:
                         arguments_table = True
@@ -734,7 +713,10 @@ def parse_bqsr(runinfo_folder_genotypeCalling,connection,package):
                     elif 'GATKTable:RecalTable2' in line:
                         recal_table_2 = True
                         skip_line = True
-            data = {'argument':arguments.rstrip(','),'quantized':quantized.rstrip(','),'recal_table_1':recal_1.rstrip(','),'recal_table_2':recal_2.rstrip(','),'recal_table_0':recal_0.rstrip(',')}
+            mref_ids = {}
+            for key in to_add_dict:
+                mref_ids[key] = ','.join(add_multiple_rows(package+key, to_add_dict[key],connection,True))
+            data = {'argument':mref_ids['Arguments'],'quantized':mref_ids['Quantized'],'recal_table_1':mref_ids['Recal_table_1'],'recal_table_2':mref_ids['Recal_table_2'],'recal_table_0':mref_ids['Recal_table_0']}
             before_after_ids[before_after] = connection.add_entity_rows(package+'BQSR_'+before_after+'_grp', data)
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id),
                 'sh_script':sh_id,'bQSR_before_grp':before_after_ids['before'],'bQSR_after_grp':before_after_ids['after']}
