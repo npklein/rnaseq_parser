@@ -717,10 +717,10 @@ def parse_bqsr(runinfo_folder_genotypeCalling,connection,package):
             for key in to_add_dict:
                 mref_ids[key] = ','.join(add_multiple_rows(package+key, to_add_dict[key],connection,True))
             data = {'argument':mref_ids['Arguments'],'quantized':mref_ids['Quantized'],'recal_table_1':mref_ids['Recal_table_1'],'recal_table_2':mref_ids['Recal_table_2'],'recal_table_0':mref_ids['Recal_table_0']}
-            before_after_ids[before_after] = connection.add_entity_rows(package+'BQSR_'+before_after+'_grp', data)
+            before_after_ids[before_after] = connection.add_entity_rows(package+'BQSR_'+before_after+'_grp', data)[0]
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id),
                 'sh_script':sh_id,'bQSR_before_grp':before_after_ids['before'],'bQSR_after_grp':before_after_ids['after']}
-        added_id = connection.add_entity_rows(package+'BQSR', data)   
+        added_id = connection.add_entity_rows(package+'BQSR', data)[0]
         connection.update_entity_rows(package+'Samples', query_list = [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}], data = {'bQSR':added_id})
 def parse_addOrReplaceReadGroups(runinfo_folder_genotypeCalling,connection,package):
     '''finished'''
@@ -728,7 +728,7 @@ def parse_addOrReplaceReadGroups(runinfo_folder_genotypeCalling,connection,packa
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'AddOrReplaceReadGroups*.sh'), connection,package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'AddOrReplaceReadGroups', data)   
+        added_id = connection.add_entity_rows(package+'AddOrReplaceReadGroups', data,ignore_duplicates=True)[0]
         connection.update_entity_rows(package+'Samples', query_list = [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}], data = {'addOrReplaceReadGroups':added_id})
 def parse_samToFilteredBam(runinfo_folder_genotypeCalling,connection,package):
     '''finished'''
