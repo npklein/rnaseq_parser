@@ -537,7 +537,6 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
                     description = os.path.basename(os.path.splitext(name)[0])
                     img_data = archive.open(name)
                     names.append(description)
-                    print(description)
                     graphs[description] = connection.add_file(name, description,package+'File', io_stream = img_data,
                                                               extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+name.replace(' ','_')},
                                                               ignore_duplicates=True)
@@ -620,10 +619,10 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
             to_add.append({'seq':s_l[0], 'count':s_l[1], 'p_value':s_l[2], 'obs_exp_max':s_l[3], 'max_obs_exp_position':s_l[4]})
         fastqc_ids['kc'] = ','.join(add_multiple_rows(package+'Kmer_content',to_add,connection,True))
 
-        data = {'adapter_content_graph':graphs['adapter_content'][0],'kmer_content_graph':graphs['kmer_profiles'][0],'per_base_n_content_graph':graphs['per_base_n_content'][0],
-                'per_base_seq_content_graph':graphs['per_base_sequence_content'][0],'per_base_seq_qual_graph':graphs['per_base_quality'][0],'per_seq_GC_content_graph':graphs['per_sequence_gc_content'][0],
-                'per_seq_qual_scores_graph':graphs['per_sequence_quality'][0],'per_tile_seq_qual_graph':graphs['per_tile_quality'][0],'seq_duplication_levels_graph':graphs['duplication_levels'][0],
-                'seq_length_distribution_graph':graphs['sequence_length_distribution'][0],
+        data = {'adapter_content_graph':graphs['adapter_content'],'kmer_content_graph':graphs['kmer_profiles'],'per_base_n_content_graph':graphs['per_base_n_content'],
+                'per_base_seq_content_graph':graphs['per_base_sequence_content'],'per_base_seq_qual_graph':graphs['per_base_quality'],'per_seq_GC_content_graph':graphs['per_sequence_gc_content'],
+                'per_seq_qual_scores_graph':graphs['per_sequence_quality'][0],'per_tile_seq_qual_graph':graphs['per_tile_quality'],'seq_duplication_levels_graph':graphs['duplication_levels'],
+                'seq_length_distribution_graph':graphs['sequence_length_distribution'],
                 'total_deduplicated_perc':total_deduplicated_perc,'adapter_content':fastqc_ids['ac'].rstrip(','),'adapter_content_check':image_data['Adapter Content'][1],'basic_statistics_check':image_data['Basic Statistics'][1],'gc_perc':fastqc_groups.group(7),
                 'kmer_content':fastqc_ids['kc'].rstrip(','),'kmer_content_check':image_data['Kmer Content'][1],'overrepresented_seqs':fastqc_ids['os'].rstrip(','),
                 'overrepresented_seqs_check':image_data['Overrepresented sequences'][1],'per_base_N_content':fastqc_ids['pbnc'].rstrip(','),'per_base_n_content_check':image_data['Per base N content'][1],'per_base_seq_content':fastqc_ids['pbsc'].rstrip(','),
