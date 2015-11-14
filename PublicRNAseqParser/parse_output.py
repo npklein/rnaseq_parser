@@ -653,7 +653,6 @@ def parse_bqsr(runinfo_folder_genotypeCalling,connection,package):
     '''finished'''
     print ('start BQSR')
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'BQSR*.sh'),connection, package):
-        print('sh_id err_id out_id',sh_id,err_id,out_id)
         bqsr_output_folder = re.search('module list.*?mkdir -p (\S+)',sh_text,re.DOTALL).group(1)
         # remove below line when on cluster
         #bqsr_output_folder ='/Users/Niek/UMCG/test/data/ATACseq/project/baseQualityScoreRecalibration/'
@@ -769,7 +768,7 @@ def parse_gatkSplitNTrim(runinfo_folder_genotypeCalling,connection,package):
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'GATKSplitNTrim*.sh'), connection,package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'GATKSplitNTrim', data)   
+        added_id = connection.add_entity_rows(package+'GATKSplitNTrim', data)[0]
         connection.update_entity_rows(package+'Samples', query_list = [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}], data = {'gATKSplitNTrim':added_id})
 def parse_cmMetrics(runinfo_folder,connection,package, pipeline):
     print ('start cmmMetrics')
@@ -778,6 +777,7 @@ def parse_cmMetrics(runinfo_folder,connection,package, pipeline):
         with open(cmMetrics_base_file+'.alignment_summary_metrics') as alignment_summary_metrics:
             metrics_class = alignment_summary_metrics.read().split('## METRICS CLASS')[1].split('\n')
             alignment_summary_metrics_ids = ''
+            to_add = []
             for line in metrics_class[2:]:
                 if len(line.strip()) == 0: continue
                 s_l = line.split('\t')
@@ -787,11 +787,13 @@ def parse_cmMetrics(runinfo_folder,connection,package, pipeline):
                         'pf_hq_error_rate':s_l[13],'pf_indel_rate':s_l[14],'mean_read_length':s_l[15],'reads_aligned_in_pairs':s_l[16],
                         'pct_reads_aligned_in_pairs':s_l[17],'bad_cycles':s_l[18],'strand_balance':s_l[19],'pct_chimeras':s_l[20],
                         'pct_adapter':s_l[21],'sample':s_l[22],'library':s_l[23],'read_group':s_l[24]}
-                alignment_summary_metrics += connection.add_entity_rows(package+'Alignment_summary_metrics',data)+','
+                to_add.append(data)
+            alignment_summary_metrics = ','.join(add_multiple_rows(package+'Alignment_summary_metrics',to_add,connection,True))
         with open(cmMetrics_base_file+'.insert_size_metrics') as insert_size_metrics:
             split_file = insert_size_metrics.read().split('## METRICS CLASS')[1].split('## HISTOGRAM')[0]
             metrics_class = split_file[0].split('\n')
             insert_size_metrics_ids = ''
+            to_add = []
             for line in metrics_class[2:]:
                 if len(line.strip()) == 0: continue
                 s_l = line.split('\t')
@@ -801,7 +803,8 @@ def parse_cmMetrics(runinfo_folder,connection,package, pipeline):
                         'width_of_40_percent':s_l[13],'width_of_50_percent':s_l[14],'width_of_60_percent':s_l[15],
                         'width_of_70_percent':s_l[16],'width_of_80_perc':s_l[17],'ent':s_l[18],'width_of_90_percent':s_l[19],
                         'width_of_99_percent':s_l[20],'sample':s_l[21],'library':s_l[22],'read_group':s_l[23]}
-                insert_size_metrics_ids += connection.add_entity_rows(package+'Insert_size_metrics_class',data)+','
+                to_add.append(data)
+            insert_size_metrics_ids = ','.join(add_multiple_rows(package+'Insert_size_metrics_class',to_add,connection,True))
             histogram = split_file[1].split('\n')
             insert_size_histogram_ids = ''
             for line in histogram[2:]:
@@ -812,19 +815,23 @@ def parse_cmMetrics(runinfo_folder,connection,package, pipeline):
         with open(cmMetrics_base_file+'.quality_by_cycle_metrics') as alignment_summary_metrics:
             metrics_class = alignment_summary_metrics.read().split('## HISTOGRAM')[1].split('\n')
             quality_per_cycle_histogram_ids = ''
+            to_add = []
             for line in metrics_class[2:]:
                 if len(line.strip()) == 0: continue
                 s_l = line.split('\t')
                 data = {'cycle':s_l[0],'mean_quality':s_l[1]}
-                quality_per_cycle_histogram_ids += connection.add_entity_rows(package+'Quality_by_cycle_metrics',data)+','                         
+                to_add.append(data)
+            quality_per_cycle_histogram_ids = ','.join(add_multiple_rows(package+'Quality_by_cycle_metrics',to_add,connection,True))                         
         with open(cmMetrics_base_file+'.quality_by_cycle_metrics') as alignment_summary_metrics:
             metrics_class = alignment_summary_metrics.read().split('## HISTOGRAM')[1].split('\n')
             quality_distribution_histogram_ids = ''
+            to_add = []
             for line in metrics_class[2:]:
                 if len(line.strip()) == 0: continue
                 s_l = line.split('\t')
                 data = {'cycle':s_l[0],'mean_quality':s_l[1]}
-                quality_distribution_histogram_ids += connection.add_entity_rows(package+'Quality_distribution_metrics',data)+','  
+                to_add.append(data)
+            quality_distribution_histogram_ids = ','.join(add_multiple_rows(package+'Quality_distribution_metrics',to_add,connection,True))  
         data = {'alignment_summary_metrics':alignment_summary_metrics_ids.rstrip(','),'insert_size_metrics_class':insert_size_metrics_ids.rstrip(','),'insert_size_metrics_histogram':insert_size_histogram_ids.rstrip(','),
                 'pipeline':pipeline,'qual_by_cycle_metrics':quality_per_cycle_histogram_ids.rstrip(','),'qual_distribution_metrics':quality_distribution_histogram_ids.rstrip(','),
                 'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
@@ -845,6 +852,7 @@ def parse_rMetrics(runinfo_folder,connection,package,pipeline):
             split_file = rMetrics_file.read().split('## METRICS CLASS')[1].split('## HISTOGRAM')[0]
             metrics_class = split_file[0].split('\n')
             metrics_ids = ''
+            to_add = []
             for line in metrics_class[2:]:
                 if len(line.strip()) == 0: continue
                 s_l = line.split('\t')
@@ -855,7 +863,8 @@ def parse_rMetrics(runinfo_folder,connection,package,pipeline):
                         'pct_mrna_bases':s_l[15],'pct_usable_bases':s_l[16],'pct_correct_strand_reads':s_l[17],
                         'median_cv_coverage':s_l[18],'median_5prime_bias':s_l[19],'median_3prime_bias':s_l[20],
                         'median_5prime_to_3prime_bias':s_l[21],'sample':s_l[22],'library':s_l[23],'read_group':s_l[24]}
-                metrics_ids += connection.add_entity_rows(package+'Rnaseq_metrics_class',data)+','
+                to_add.append(data)
+            metrics_ids = ','.join(add_multiple_rows(package+'Rnaseq_metrics_class',to_add,connection,True))
             histogram = split_file[1].split('\n')
             metrics_histogram_ids = ''
             for line in histogram[2:]:
@@ -866,7 +875,7 @@ def parse_rMetrics(runinfo_folder,connection,package,pipeline):
  
         data = {'rnaseq_metrics_class':metrics_ids.rstrip(','),'rnaseq_metrics_histogram':metrics_histogram_ids.rstrip(','),'err_file':err_id,'out_file':out_id,'runtime':runtime,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'CRMetrics', data)   
+        added_id = connection.add_entity_rows(package+'CRMetrics', data)[0]
         if 'QC' in runinfo_folder:
             cRMetric_data = connection.query_entity_rows(package+'CRMetrics', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
             if len(cRMetric_data['items']) >0 and len(cRMetric_data['items'][0]['id']) > 0:
@@ -878,7 +887,7 @@ def parse_mergeBam(runinfo_folder_genotypeCalling,connection,package):
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'MergeBamFiles*.sh'),connection, package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId':internalId,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'MergeBamFiles', data)
+        added_id = connection.add_entity_rows(package+'MergeBamFiles', data)[0]
         rRMetric_data = connection.query_entity_rows(package+'rRMetric', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(rRMetric_data['items']) >0 and len(rRMetric_data['items'][0]['id']) > 0:
             added_id = rRMetric_data['items'][0]['id']+','+added_id
@@ -923,11 +932,13 @@ def parse_kallisto(runinfo_folder_quantification,connection,package):
         abundance = ''
         with open(output_folder+'abundance.tsv') as abundance_tsv:
             abundance_tsv.readline()
+            to_add = []
             for line in abundance_tsv:
                 spl_line = line.strip().split('\t')
                 data = {'target_id':spl_line[0], 'length':spl_line[1],'eff_length':spl_line[2],
                         'est_counts':spl_line[3],'tpm':spl_line[4]}
-                abundance += connection.add_entity_rows(package+'Abundance', data = data)+','
+                to_add.append(data)
+            abundance = ','.join(add_multiple_rows(package+'Abundance', to_add,connection,True))
         abundance = abundance.rstrip(',')
         k_mer_length = re.search('k-mer length:\s+(\d+)', err_text).group(1)
         number_of_targets = re.search('number of targets:\s+(\S+)', err_text).group(1).replace(',','')
@@ -968,7 +979,7 @@ def parse_combineBedFiles(runinfo_folder_QC,connection,package):
                 'n_nonmissing':groups.group(3),'n_nosex':groups.group(9),'n_of_mssnip':'NotImplemented','n_individual_read':groups.group(2),
                 'err_file':err_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id),
                 'out_file':out_id,'runtime':runtime,'sh_script':sh_id}
-        added_id = connection.add_entity_rows(package+'CombineBedFiles', data)   
+        added_id = connection.add_entity_rows(package+'CombineBedFiles', data)[0]
         combineBedFiles_data = connection.query_entity_rows(package+'CombineBedFiles', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(combineBedFiles_data['items']) >0 and len(combineBedFiles_data['items'][0]['id']) > 0:
             added_id = combineBedFiles_data['items'][0]['id']+','+added_id
@@ -981,18 +992,20 @@ def analyseCovariates(runinfo_folder_genotypeCalling,connection,package):
         with open(ac_intermediate) as ac_intermediate_file:
             ac_intermediate_file.readline()
             ac_intermediate_ids = ''
+            to_add = []
             for line in ac_intermediate_file:
                 s_l = line.split(',')
                 data = {'covariate_value':s_l[0],'covariate_name':s_l[1],'event_type':s_l[2],'observations':s_l[3],'errors':s_l[4],
                         'empirical_quality':s_l[5],'average_reported_quality':s_l[6],'accuracy':s_l[7],'recalibration':s_l[8], 
                         'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-                ac_intermediate_ids += connection.add_entity_rows(package+'CovariateAnalysisTable',data)+','
+                to_add.append(data)
+            ac_intermediate_ids = ','.join(add_multiple_rows(package+'CovariateAnalysisTable',to_add,connection,True))
                 
             ac_intermediate_ids = ac_intermediate_ids.rstrip(',')
             
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,
                 'sh_script':sh_id,'covariateAnalysisTable':ac_intermediate_ids, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'AnalyseCovariates', data)   
+        added_id = connection.add_entity_rows(package+'AnalyseCovariates', data)[0]   
         connection.update_entity_rows(package+'Samples', query_list = [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}], data = {'analyseCovariates':added_id})
 def parse_mergeGvcf(runinfo_folder_genotypeCalling,connection,package):
     '''finished'''
@@ -1000,7 +1013,7 @@ def parse_mergeGvcf(runinfo_folder_genotypeCalling,connection,package):
     for sh_text, err_text, mout_text, runtime, sample_name, internalId, project,sh_id,err_id,out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'MergeGvcf*.sh'),connection, package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'MergeGvcf', data)   
+        added_id = connection.add_entity_rows(package+'MergeGvcf', data)[0]
         connection.update_entity_rows(package+'Samples', query_list = [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}], data = {'mergeGvcf':added_id})
 def parse_genotypeHarmonizer(runinfo_folder_genotypeCalling,connection,package):
     '''finished'''
@@ -1008,7 +1021,7 @@ def parse_genotypeHarmonizer(runinfo_folder_genotypeCalling,connection,package):
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'GenotypeHarmonizer*.sh'),connection, package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'GenotypeHarmonizer', data)
+        added_id = connection.add_entity_rows(package+'GenotypeHarmonizer', data)[0]
         genotypeHarmonizer_data = connection.query_entity_rows(package+'GenotypeHarmonizer', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(genotypeHarmonizer_data['items']) >0 and len(genotypeHarmonizer_data['items'][0]['id']) > 0:
             added_id = genotypeHarmonizer_data['items'][0]['id']+','+added_id
