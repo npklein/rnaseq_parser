@@ -164,15 +164,17 @@ def parse_rnaseq_tools(sh_file_path,connection,package):
         if not sh_id:
             sh_id = connection.add_file(basefile+'.sh','.sh script that was used to get the data', package+'File',
                              extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+sh_file.replace(' ','_')},
-                             ignore_duplicates=True)[0]
+                             ignore_duplicates=True)
+
         if not err_id:
             err_id = connection.add_file(basefile+'.err', 'file with messages printed to stderr by program', package+'File',
                               extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.err').replace(' ','_')},
-                              ignore_duplicates=True)[0]
+                              ignore_duplicates=True)
         if not out_id:
             out_id = connection.add_file(basefile+'.out', 'file with messages printed to stdout by program',package+'File',
                      extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.out').replace(' ','_')},
-                     ignore_duplicates=True)[0]
+                     ignore_duplicates=True)
+
         yield sh_text, err_text, out_text, runtime, sample_name, internalId, project, sh_id, err_id, out_id, tool_ids
 def parse_depth_or_self(entity,depth_or_self_file,file_type,connection,package):
     '''parse depthRG or depthSM file'''
@@ -651,6 +653,7 @@ def parse_bqsr(runinfo_folder_genotypeCalling,connection,package):
     '''finished'''
     print ('start BQSR')
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'BQSR*.sh'),connection, package):
+        print('sh_id err_id out_id',sh_id,err_id,out_id)
         bqsr_output_folder = re.search('module list.*?mkdir -p (\S+)',sh_text,re.DOTALL).group(1)
         # remove below line when on cluster
         #bqsr_output_folder ='/Users/Niek/UMCG/test/data/ATACseq/project/baseQualityScoreRecalibration/'
@@ -736,7 +739,7 @@ def parse_samToFilteredBam(runinfo_folder_genotypeCalling,connection,package):
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'SamToFilteredBam*.sh'), connection,package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'SamToFilteredBam', data)   
+        added_id = connection.add_entity_rows(package+'SamToFilteredBam', data,ignore_duplicates=True)[0]
         samToFilteredBam_data = connection.query_entity_rows(package+'SamToFilteredBam', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(samToFilteredBam_data['items']) >0 and len(samToFilteredBam_data['items'][0]['id']) > 0:
             added_id = samToFilteredBam_data['items'][0]['id']+','+added_id
@@ -747,7 +750,7 @@ def parse_sortBam(runinfo_folder_genotypeCalling,connection,package):
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'SortBam*.sh'), connection,package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'SortBam', data)   
+        added_id = connection.add_entity_rows(package+'SortBam', data,ignore_duplicates=True)[0]
         samToFilterdBam_data = connection.query_entity_rows(package+'SortBam', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(samToFilterdBam_data['items']) >0 and len(samToFilterdBam_data['items'][0]['id']) > 0:
             added_id = samToFilterdBam_data['items'][0]['id']+','+added_id
@@ -1016,7 +1019,7 @@ def parse_indelRealignmentKnown(runinfo_folder_genotypeCalling,connection,packag
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_genotypeCalling,'IndelRealignmentKnown*.sh'),connection, package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
-        added_id = connection.add_entity_rows(package+'IndelRealignmentKnown', data)   
+        added_id = connection.add_entity_rows(package+'IndelRealignmentKnown', data,ignore_duplicates=True)[0] 
         connection.update_entity_rows(package+'Samples', query_list = [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}], data = {'indelRealignmentKnown':added_id})
 
 if __name__ == "__main__":

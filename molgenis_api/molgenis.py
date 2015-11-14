@@ -261,7 +261,9 @@ class Connect_Molgenis():
                 try:
                     self.check_server_response(server_response, message, entity_used=entity_name, data_used=json.dumps(data))
                     if api_version == 'v1':
+                        print(server_response.headers['location'])
                         added_id = server_response.headers['location'].split('/')[-1]
+                        print(added_id)
                         return added_id
                     elif api_version == 'v2':
                         # return list of IDs
@@ -279,6 +281,9 @@ class Connect_Molgenis():
                             query = [{'field':unique_att[1], 'operator':'EQUALS', 'value':unique_att[0]}]
                             row = self.query_entity_rows(entity_name, query = query)['items'][0]
                             added_id = row[self.get_id_attribute(entity_name)]
+                            # v1 only returns 1 ID
+                            if api_version == 'v1':
+                                return added_id
                             added_ids.append(added_id)
                             if not added_id:
                                 raise Exception('No results found with query:')
