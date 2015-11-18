@@ -75,6 +75,7 @@ class Connect_Molgenis():
                     self.logger = logging.getLogger(__name__)
                     self.logger.setLevel(level=getattr(logging, logging_level))
                     self.login_time = None
+                    self.saved_arguments = None
                     self.time_start = timeit.default_timer()
                     security.overwrite_passphrase_location(password_location)
                     if new_pass_file:
@@ -184,6 +185,16 @@ class Connect_Molgenis():
                     except ValueError:
                         self.logger.debug(str(server_response)+' -> '+server_response.reason)
                         pass # no json oobject in server_response
+                # if service unavailable, try again in 5 minutes
+                if str(server_response) == '<Response [503]>':
+                    self.logger.debu('Try again in 5 minutes')
+                    time.sleep(300)
+                    if self.saved_arguments[0] == 'add_multiple_rows':
+                        self.add_multiple_rows(self.saved_arguments[1:]
+                    elif self.saved_arguments[0] == 'add_file':
+                        self.add_file(self.saved_arguments[1:]
+                    else:
+                        self.logger.error(self.saved_arguments[0]+' Not a function')
                 if str(server_response) == '<Response [400]>':
                     error(server_response) 
                 elif str(server_response) == '<Response [404]>':
@@ -334,7 +345,8 @@ class Connect_Molgenis():
                 if validate_json:
                     for data in data_list:
                         self.validate_data(entity_name, data)
-
+                # need to save previous input incase service is unavailable, so that we can retry later
+                self.saved_arguments = ['add_multiple_rows', entity_name, data_list, validate_json, add_datetime, datetime_column,added_by,added_by_column,ignore_duplicates)
                 sanitized_data_list = [self._sanitize_data(data, add_datetime, datetime_column, added_by, added_by_column) for data in data_list]
                 request_url = self.api_v2_url+'/'+entity_name+'/'
                 # post to the entity with the json data
@@ -369,6 +381,7 @@ class Connect_Molgenis():
                     add_datetime = self._add_datetime_default
                 if not added_by:
                     added_by = self._added_by_default
+                self.saved_arguments = ['add_file', entity_name, data_list, validate_json, add_datetime, datetime_column,added_by,added_by_column,ignore_duplicates)
                 file_post_header = copy.deepcopy(self.session.headers)
                 old_header = copy.deepcopy(self.session.headers)
                 del(file_post_header['Accept'])
