@@ -190,9 +190,9 @@ class Connect_Molgenis():
                     self.logger.debu('Try again in 5 minutes')
                     time.sleep(300)
                     if self.saved_arguments[0] == 'add_multiple_rows':
-                        self.add_multiple_rows(self.saved_arguments[1:]
+                        self.add_multiple_rows(self.saved_arguments[1:])
                     elif self.saved_arguments[0] == 'add_file':
-                        self.add_file(self.saved_arguments[1:]
+                        self.add_file(self.saved_arguments[1:])
                     else:
                         self.logger.error(self.saved_arguments[0]+' Not a function')
                 if str(server_response) == '<Response [400]>':
