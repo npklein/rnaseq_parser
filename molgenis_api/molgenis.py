@@ -296,8 +296,11 @@ class Connect_Molgenis():
                         added_ids = []
                         for unique_att in unique_attributes:
                             query = [{'field':unique_att[1], 'operator':'EQUALS', 'value':unique_att[0]}]
-                            row = self.query_entity_rows(entity_name, query = query)['items'][0]
-                            added_id = row[self.get_id_attribute(entity_name)]
+                            if unique_att[1] == self.get_id_attribute(entity_name):
+                                added_id = unique_att[0]
+                            else:
+                                row = self.query_entity_rows(entity_name, query = query)['items'][0]
+                                added_id = row[self.get_id_attribute(entity_name)]
                             # v1 only returns 1 ID
                             if api_version == 'v1':
                                 return added_id
