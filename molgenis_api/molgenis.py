@@ -308,7 +308,14 @@ class Connect_Molgenis():
                             if not added_id:
                                 raise Exception('No results found with query:')
                             self.logger.debug('id found for row with duplicate value: '+str(added_id))
-                        return added_ids
+                        if len(added_ids) < len(data):
+                            self.logger.debug('Not enough IDs for the amount of data provided')
+                            raise ValueError('Not enough IDs for the amount of data provided') 
+                        elif len(added_ids) > len(data):
+                            self.logger.debug('Too many IDs for the amount of data provided')
+                            raise ValueError('Too many IDs for the amount of data provided') 
+                        else:
+                            return added_ids
                     else:
                         raise
                 raise Exception('Code logic broken, check _add_entity_rows_or_file_server_response function')
