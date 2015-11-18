@@ -354,7 +354,7 @@ class Connect_Molgenis():
                     for data in data_list:
                         self.validate_data(entity_name, data)
                 # need to save previous input incase service is unavailable, so that we can retry later
-                self.saved_arguments = ['add_multiple_rows', entity_name, data_list, validate_json, add_datetime, datetime_column,added_by,added_by_column,ignore_duplicates)
+                self.saved_arguments = ['add_multiple_rows', entity_name, data_list, validate_json, add_datetime, datetime_column,added_by,added_by_column,ignore_duplicates]
                 sanitized_data_list = [self._sanitize_data(data, add_datetime, datetime_column, added_by, added_by_column) for data in data_list]
                 request_url = self.api_v2_url+'/'+entity_name+'/'
                 # post to the entity with the json data
@@ -389,7 +389,7 @@ class Connect_Molgenis():
                     add_datetime = self._add_datetime_default
                 if not added_by:
                     added_by = self._added_by_default
-                self.saved_arguments = ['add_file', entity_name, data_list, validate_json, add_datetime, datetime_column,added_by,added_by_column,ignore_duplicates)
+                self.saved_arguments = ['add_file', file_path, description, entity_name, extra_data, file_name, add_datetime, datetime_column,added_by,added_by_column,io_stream,ignore_duplicates]
                 file_post_header = copy.deepcopy(self.session.headers)
                 old_header = copy.deepcopy(self.session.headers)
                 del(file_post_header['Accept'])
