@@ -272,11 +272,19 @@ class Connect_Molgenis():
                 try:
                     self.check_server_response(server_response, message, entity_used=entity_name, data_used=json.dumps(data))
                     if api_version == 'v1':
-                        added_id = server_response.headers['location'].split('/')[-1]
+                        try:
+                            added_id = server_response.headers['location'].split('/')[-1]
+                        except KeyError:
+                            self.logger.debug('Server response header:\n'+str(server_response.headers))
+                            raise
                         return added_id
                     elif api_version == 'v2':
                         # return list of IDs
-                        added_ids = server_response.json()['location'].split('in=(')[1].split(')')[0].replace('"','').split(',')
+                        try:
+                            added_ids = server_response.json()['location'].split('in=(')[1].split(')')[0].replace('"','').split(',')
+                        except KeyError:
+                            self.logger.debug('server response json:\n'+str(server_response.json()))
+                            raise
                         return added_ids
                     else:
                         raise ValueError('That api version does not exist: '+str(api_version))
