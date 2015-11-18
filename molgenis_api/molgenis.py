@@ -261,9 +261,7 @@ class Connect_Molgenis():
                 try:
                     self.check_server_response(server_response, message, entity_used=entity_name, data_used=json.dumps(data))
                     if api_version == 'v1':
-                        print(server_response.headers['location'])
                         added_id = server_response.headers['location'].split('/')[-1]
-                        print(added_id)
                         return added_id
                     elif api_version == 'v2':
                         # return list of IDs
