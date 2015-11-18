@@ -185,7 +185,7 @@ class Connect_Molgenis():
                         self.logger.debug(str(server_response)+' -> '+server_response.reason)
                         pass # no json oobject in server_response
                 if str(server_response) == '<Response [400]>':
-                    error(server_response) 
+                    error(server_response)
                 elif str(server_response) == '<Response [404]>':
                     error(server_response)
                     error_message = 'Page not found'
