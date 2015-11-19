@@ -136,7 +136,17 @@ class Connect_Molgenis():
                 self.session.headers.update(headers)
                 self.login_time = timeit.default_timer()
                 return headers
-            
+            def _getTokenHeader(self):
+                try:
+                    return {"x-molgenis-token":self.token}
+                except AttributeError:
+                    return {}
+
+            def _getTokenHeaderWithContentType(self):
+                headers = self._getTokenHeader()
+                headers.update({"Content-Type":"application/json"})
+                return headers
+
             def logout(self):
                 server_response = self.session.get(self.api_v1_url+'/logout/')
                 self.check_server_response(server_response, 'logout')
@@ -459,6 +469,7 @@ class Connect_Molgenis():
                     server_response_json = server_response.json()
                     self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name, query_used=json_query)
                 else:
+                    self.session.headers.update({'Content-Type': None})
                     server_response = self.session.post(self.api_v1_url+'/'+entity_name+'?_method=GET',
                                                     params={"_method":"GET", "attributes":attributes, "num": num, "start": start, "sortColumn":sortColumn, "sortOrder": sortOrder},)
                     server_response_json = server_response.json()
