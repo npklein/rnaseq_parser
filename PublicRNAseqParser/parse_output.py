@@ -260,7 +260,7 @@ def parse_verifyBamID(runinfo_folder_QC,connection,package):
                 'self_only':self_only,'self_only_sample_ID':self_only_sample_ID, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}        
         added_id = connection.add_entity_rows(package+'VerifyBamID', data,ignore_duplicates=True)[0]
         # if this sample already had a verifyBamId, find it, append the new one, and update sample row
-        verifybamid_data = connection.query_entity_rows(package+'VerifyBamID', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        verifybamid_data = connection.get(package+'VerifyBamID', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(verifybamid_data['items']) >0 and len(verifybamid_data['items'][0]['id']) > 0:
             added_id = verifybamid_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'verifyBamID':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -286,7 +286,7 @@ def parse_hisat(runinfo_folder_QC,connection,package):
                 'mates_aligned_multiple':groups.group(18),'mates_aligned_multiple_p':groups.group(19),'overall_alignment_rate':groups.group(20),'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
                 'sh_script':sh_id,'out_file':out_id,'err_file':err_id,'runtime':runtime, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
         added_id = connection.add_entity_rows(package+'Hisat', data,ignore_duplicates=True)[0]
-        hisat_data = connection.query_entity_rows(package+'Hisat', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        hisat_data = connection.get(package+'Hisat', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(hisat_data['items']) >0 and len(hisat_data['items'][0]['id']) > 0:
             added_id = hisat_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'hisat':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -368,7 +368,7 @@ def parse_variantEval(runinfo_folder_QC,connection,package):
         for key, value in data.items():
             data[key] = value.rstrip(',')
         added_id = connection.add_entity_rows(package+'VariantEval',data,ignore_duplicates=True)[0]
-        variantEval_data = connection.query_entity_rows(package+'hisat', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        variantEval_data = connection.get(package+'hisat', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(variantEval_data['items']) >0 and len(variantEval_data['items'][0]['id']) > 0:
             added_id = variantEval_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'variantEval':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -489,7 +489,7 @@ def parse_variantCaller(variant_caller, runinfo_folder_QC,connection,package):
             data.update({'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId})
         added_id = connection.add_entity_rows(package+'VariantCaller', data,ignore_duplicates=True)[0]
         if variant_caller == 'UnifiedGenotyper':
-            unifiedGenotyper_data = connection.query_entity_rows(package+'VariantCaller', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+            unifiedGenotyper_data = connection.get(package+'VariantCaller', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
             if len(unifiedGenotyper_data['items']) >0 and len(unifiedGenotyper_data['items'][0]['id']) > 0:
                 added_id = unifiedGenotyper_data['items'][0]['id']+','+added_id
         if sample_names:
@@ -614,7 +614,7 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
                 'seq_length_distribution_check':image_data['Sequence Length Distribution'][1],'seqs_flagged_as_poor':fastqc_groups.group(5),'total_seqs':fastqc_groups.group(4),'seq_length_max':fastqc_groups.group(6).split('-')[1],'file_name':fastqc_groups.group(2),'file_type':fastqc_groups.group(2),'encoding':fastqc_groups.group(3),
                 'err_file':err_id,'out_file':out_id,'runtime':runtime,'sh_script':sh_id,'internalId':internalId,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name)}
         added_id = connection.add_entity_rows(package+'FastQC', data)[0]
-        fastqc_data = connection.query_entity_rows(package+'fastqc', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        fastqc_data = connection.get(package+'fastqc', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(fastqc_data['items']) >0 and len(fastqc_data['items'][0]['id']) > 0:
             added_id = fastqc_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'fastqc':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -739,7 +739,7 @@ def parse_samToFilteredBam(runinfo_folder_genotypeCalling,connection,package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
         added_id = connection.add_entity_rows(package+'SamToFilteredBam', data,ignore_duplicates=True)[0]
-        samToFilteredBam_data = connection.query_entity_rows(package+'SamToFilteredBam', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        samToFilteredBam_data = connection.get(package+'SamToFilteredBam', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(samToFilteredBam_data['items']) >0 and len(samToFilteredBam_data['items'][0]['id']) > 0:
             added_id = samToFilteredBam_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'samToFilteredBam':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -750,7 +750,7 @@ def parse_sortBam(runinfo_folder_genotypeCalling,connection,package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
         added_id = connection.add_entity_rows(package+'SortBam', data,ignore_duplicates=True)[0]
-        samToFilterdBam_data = connection.query_entity_rows(package+'SortBam', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        samToFilterdBam_data = connection.get(package+'SortBam', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(samToFilterdBam_data['items']) >0 and len(samToFilterdBam_data['items'][0]['id']) > 0:
             added_id = samToFilterdBam_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'sortBam':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -838,7 +838,7 @@ def parse_cmMetrics(runinfo_folder,connection,package, pipeline):
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
         added_id = connection.add_entity_rows(package+'CMMetrics', data)   
         if 'QC' in runinfo_folder:
-            cMMetric_data = connection.query_entity_rows(package+'CMMetrics', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+            cMMetric_data = connection.get(package+'CMMetrics', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
             if len(cMMetric_data['items']) >0 and len(cMMetric_data['items'][0]['id']) > 0:
                 added_id = cMMetric_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'cMMetrics':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -877,7 +877,7 @@ def parse_rMetrics(runinfo_folder,connection,package,pipeline):
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
         added_id = connection.add_entity_rows(package+'CRMetrics', data)[0]
         if 'QC' in runinfo_folder:
-            cRMetric_data = connection.query_entity_rows(package+'CRMetrics', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+            cRMetric_data = connection.get(package+'CRMetrics', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
             if len(cRMetric_data['items']) >0 and len(cRMetric_data['items'][0]['id']) > 0:
                 added_id = cRMetric_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'cRMetrics':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -888,7 +888,7 @@ def parse_mergeBam(runinfo_folder_genotypeCalling,connection,package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId':internalId,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
         added_id = connection.add_entity_rows(package+'MergeBamFiles', data)[0]
-        rRMetric_data = connection.query_entity_rows(package+'rRMetric', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        rRMetric_data = connection.get(package+'rRMetric', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(rRMetric_data['items']) >0 and len(rRMetric_data['items'][0]['id']) > 0:
             added_id = rRMetric_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'rRMetric':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -954,7 +954,7 @@ def parse_kallisto(runinfo_folder_quantification,connection,package):
                 'err_file':err_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id),
                 'out_file':out_id,'runtime':runtime,'sh_script':sh_id}
         added_id = connection.add_entity_rows(package+'CombineBedFiles', data)   
-        kallisto_data = connection.query_entity_rows(package+'Kallisto', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        kallisto_data = connection.get(package+'Kallisto', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(kallisto_data['items']) >0 and len(kallisto_data['items'][0]['id']) > 0:
             added_id = kallisto_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'kallisto':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -980,7 +980,7 @@ def parse_combineBedFiles(runinfo_folder_QC,connection,package):
                 'err_file':err_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id),
                 'out_file':out_id,'runtime':runtime,'sh_script':sh_id}
         added_id = connection.add_entity_rows(package+'CombineBedFiles', data)[0]
-        combineBedFiles_data = connection.query_entity_rows(package+'CombineBedFiles', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        combineBedFiles_data = connection.get(package+'CombineBedFiles', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(combineBedFiles_data['items']) >0 and len(combineBedFiles_data['items'][0]['id']) > 0:
             added_id = combineBedFiles_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'combineBedFiles':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
@@ -1022,7 +1022,7 @@ def parse_genotypeHarmonizer(runinfo_folder_genotypeCalling,connection,package):
         data = {'err_file':err_id,'out_file':out_id,'runtime':runtime,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name),'internalId':internalId,
                 'sh_script':sh_id, 'tools':tool_ids,'sample_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}
         added_id = connection.add_entity_rows(package+'GenotypeHarmonizer', data)[0]
-        genotypeHarmonizer_data = connection.query_entity_rows(package+'GenotypeHarmonizer', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
+        genotypeHarmonizer_data = connection.get(package+'GenotypeHarmonizer', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])
         if len(genotypeHarmonizer_data['items']) >0 and len(genotypeHarmonizer_data['items'][0]['id']) > 0:
             added_id = genotypeHarmonizer_data['items'][0]['id']+','+added_id
         connection.update_entity_rows(package+'Samples', data={'genotypeHarmonizer':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
