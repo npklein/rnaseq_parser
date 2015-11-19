@@ -73,8 +73,8 @@ parser.add_argument("-z","--rMetrics_genotypeCalling", help="Parse RnaMetrics fo
 parser.add_argument("-5", '--md5sum', help="parse md5sum", action='store_true')
 parser.add_argument("-1", '--kallisto', help="parse Kallisto", action='store_true')
 parser.add_argument("-2", '--gvcf', help="parse gvcf", action='store_true')
-parser.add_argument("--add_QC", help="Add data from all QC steps")
-parser.add_argument("--add_genotypeCalling", help="Add data from all genotypeCalling steps")
+parser.add_argument("--QC", help="Add data from all QC steps",action='store_true')
+parser.add_argument("--genotypeCalling", help="Add data from all genotypeCalling steps",action='store_true')
 parser.add_argument("--delete_entity", help="Delete all rows of entity (happens before filling database)")
 parser.add_argument("--delete_all", help="Delete all rows of all entites of package (happens before filling database)", action='store_true')
 parser.add_argument("--analysis_id", help="Overwrite current analysis ID in CONFIG",default=configSectionMap("settings")['analysis_id'])
@@ -96,7 +96,7 @@ if not (args.all or args.hisat or args.ena or args.variantEval or args.verifyBam
         or args.rMetrics_QC or args.rMetrics_genotypeCalling or args.cMetrics_QC or args.cMetrics_genotypeCalling or args.flagstat or args.md5sum
         or args.delete_all or args.analyse_covariates or args.haplotypeCaller or args.unifiedGenotyper or args.indelRealignmentKnown or args.mergeGvcf 
         or args.indelRealignmentKnown or args.genotypeHarmonizer or args.fastqc or args.markDuplicates or args.mergeBam or args.combineBed
-        or args.kallisto or args.gvcf or args.add_QC or args.add_genotypeCalling):
+        or args.kallisto or args.gvcf or args.QC or args.genotypeCalling):
     parser.error('No data selected to be added to the database')
 
 with open(r'PublicRNAseqParser/CONFIG','w') as configfile:
@@ -144,11 +144,11 @@ with molgenis.Connect_Molgenis(configSectionMap('settings')['server'],
         args.cMetrics_QC, args.rMetrics_genotypeCalling, args.cMetrics_genotypeCalling, args.analyse_covariates, args.mergeBam = (True,)*5
         args.haplotypeCaller, args.unifiedGenotyper, args.genotypeHarmonizer, args.mergeGvcf, args.fastqc, args.markDuplicates = (True,)*6
         args.analyseCovariates, args.md5sum, args.kallisto, args.gvcf = (True,)*4
-    if args.add_QC:
+    if args.QC:
         args.hisat, args.variantEval, args.verifyBamID, args.combineBed = (True,)*4
         args.samToFilteredBam, args.sortBam, args.rMetrics_QC,args.cMetrics_QC = (True,)*4
         args.unifiedGenotyper, args.genotypeHarmonizer, args.fastqc,args.md5sum = (True,)*4
-    if args.add_genotypeCalling:
+    if args.genotypeCalling:
         args.bqsr, args.addOrReplaceReadGroups,args.indelRealignmentKnown,args.gatkSplitNtrim, args.flagstat  = (True,)*5
         args.rMetrics_genotypeCalling, args.cMetrics_genotypeCalling, args.analyse_covariates, args.mergeBam = (True,)*4
         args.haplotypeCaller, args.mergeGvcf,args.markDuplicates,args.analyseCovariates,args.md5sum,args.gvcf = (True,)*3
