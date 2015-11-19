@@ -444,15 +444,11 @@ class Connect_Molgenis():
                     sortOrder (string): ORder to sort in
                 Returns:
                     result (dict): json dictionary of retrieve data
-                
-                TODO:
-                    More difficult get queries
                 '''
-                
-                if len(query) == 0:
-                    self.logger.error('Can\'t search with empty query')
-                    raise ValueError('Can\'t search with empty query')
                 if query:
+                    if len(query) == 0:
+                        self.logger.error('Can\'t search with empty query')
+                        raise ValueError('Can\'t search with empty query')
                     json_query = json.dumps({'q':query})
                     server_response = self.session.post(self.api_v1_url+'/'+entity_name+'?_method=GET', data = json_query,
                                                     params={"_method":"GET", "attributes":attributes, "num": num, "start": start, "sortColumn":sortColumn, "sortOrder": sortOrder},)
