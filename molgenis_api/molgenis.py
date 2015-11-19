@@ -43,7 +43,7 @@ class Connect_Molgenis():
                     # add a row to the entity public_rnaseq_Individuals
                     connection.add_entity_row('public_rnaseq_Individuals',{'id':'John Doe','age':'26', 'gender':'Male'})
                     # get the rows from public_rnaseq_Individuals where gender = Male
-                    print connection.query_entity_rows('public_rnaseq_Individuals',[{'field':'gender', 'operator':'EQUALS', 'value':'Male'}])['items'] 
+                    print connection.get('public_rnaseq_Individuals',[{'field':'gender', 'operator':'EQUALS', 'value':'Male'}])['items'] 
                     # update row in public_rnaseqIndivduals where id=John Doe -> set gender to Female
                     connection.update_entity_row('public_rnaseq_Individuals',[{'field':'id', 'operator':'EQUALS', 'value':'John Doe'}], {'gender':'Female'})  
             """
@@ -299,7 +299,7 @@ class Connect_Molgenis():
                             if unique_att[1] == self.get_id_attribute(entity_name):
                                 added_id = unique_att[0]
                             else:
-                                row = self.query_entity_rows(entity_name, query = query)['items'][0]
+                                row = self.get(entity_name, query = query)['items'][0]
                                 added_id = row[self.get_id_attribute(entity_name)]
                             # v1 only returns 1 ID
                             if api_version == 'v1':
@@ -308,12 +308,15 @@ class Connect_Molgenis():
                             if not added_id:
                                 raise Exception('No results found with query:')
                             self.logger.debug('id found for row with duplicate value: '+str(added_id))
+                        message = '# of added_ids: '+str(len(added_ids))+'\n# of rows in data_list:'+str(len(data))+'\n'
                         if len(added_ids) < len(data):
-                            self.logger.debug('Not enough IDs for the amount of data provided')
-                            raise ValueError('Not enough IDs for the amount of data provided') 
+                            message += 'Not enough IDs for the amount of data provided'
+                            self.logger.debug(message)
+                            raise ValueError(message) 
                         elif len(added_ids) > len(data):
-                            self.logger.debug('Too many IDs for the amount of data provided')
-                            raise ValueError('Too many IDs for the amount of data provided') 
+                            message += 'Too many IDs for the amount of data provided'
+                            self.logger.debug(message)
+                            raise ValueError(message) 
                         else:
                             return added_ids
                     else:
@@ -428,26 +431,39 @@ class Connect_Molgenis():
                 added_id = self._add_entity_rows_or_file_server_response(entity_name, data, server_response,'file', api_version='v1',ignore_duplicates=ignore_duplicates)
                 return added_id
                 
-            def query_entity_rows(self, entity_name, query):
+            def get(self, entity_name, query=None,attributes=None, num=100, start=0, sortColumn=None, sortOrder=None):
                 '''Get row(s) from entity with a query
                 
                 Args:
                     entity_name (string): Name of the entity where get query should be run on
                     query (list): List of dictionaries with as keys:values -> [{'field':column name, 'operator':'EQUALS', 'value':value}]
-                     
+                    attributes (?): Attributes to return
+                    num (int): Number of results to return
+                    start (int): Page to start returning results from
+                    sortColumn (string): Column name to sort on
+                    sortOrder (string): ORder to sort in
                 Returns:
                     result (dict): json dictionary of retrieve data
                 
                 TODO:
                     More difficult get queries
                 '''
+                
                 if len(query) == 0:
                     self.logger.error('Can\'t search with empty query')
                     raise ValueError('Can\'t search with empty query')
-                json_query = json.dumps({'q':query})
-                server_response = self.session.post(self.api_v1_url+'/'+entity_name+'?_method=GET', data = json_query)
-                server_response_json = server_response.json()
-                self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name, query_used=json_query)
+                if query:
+                    json_query = json.dumps({'q':query})
+                    server_response = self.session.post(self.api_v1_url+'/'+entity_name+'?_method=GET', data = json_query,
+                                                    params={"_method":"GET", "attributes":attributes, "num": num, "start": start, "sortColumn":sortColumn, "sortOrder": sortOrder},)
+                    server_response_json = server_response.json()
+                    self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name, query_used=json_query)
+                else:
+                    server_response = self.session.post(self.api_v1_url+'/'+entity_name+'?_method=GET',
+                                                    params={"_method":"GET", "attributes":attributes, "num": num, "start": start, "sortColumn":sortColumn, "sortOrder": sortOrder},)
+                    server_response_json = server_response.json()
+                    self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name)
+
                 if server_response_json['total'] >= server_response_json['num']:
                     self.logger.warning(str(server_response_json['total'])+' number of rows selected. Max number of rows to retrieve data for is set to '+str(server_response_json['num'])+'.\n'
                                 +str(server_response_json['num']-server_response_json['total'])+' rows will not be in the results.')
@@ -457,27 +473,6 @@ class Connect_Molgenis():
                                   'returned '+str(len(server_response_json['items']))+' items')
                 return server_response_json
           
-            def get_entity(self, entity_name):
-                '''Get all data of entity_name
-                
-                Args:
-                    entity_name (string): Name of the entity where get query should be run on
-                    query (list): List of dictionaries with as keys:values -> [{'field':column name, 'operator':'EQUALS', 'value':value}]
-                     
-                Returns:
-                    result (dict): json dictionary of retrieve data
-                
-                TODO:
-                    More difficult get queries
-                '''
-                server_response = self.session.get(self.api_v1_url+'/'+entity_name)
-                server_response_json = server_response.json()
-                self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name)
-                if server_response_json['total'] >= server_response_json['num']:
-                    self.logger.warning(str(server_response_json['total'])+' number of rows selected. Max number of rows to retrieve data for is set to '+str(server_response_json['num'])+'.\n'
-                                +str(int(server_response_json['num'])-int(server_response_json['total']))+' rows will not be in the results.')
-                    self.logger.info('Selected '+str(server_response_json['total'])+' row(s).')
-                return server_response_json
             _updated_by_default = False
             def update_entity_rows(self, entity_name, data, row_id = None, query_list=None, add_datetime=None, datetime_column='datetime_last_updated', updated_by = None, updated_by_column='updated_by', validate_json=False):
                 '''Update an entity row, either by giving the attribute id name and the id for the row to update, or a query for which row to update
@@ -487,7 +482,7 @@ class Connect_Molgenis():
                     data (dict):  Key = column name, value = column value
                     id_attribute: The id_attribute name for the entity which you want to update the row
                     row_id: The row id value (from id_attribute)
-                    query_list (list): List of dictionaries which contain query to select the row to update (see documentation of query_entity_rows)  (def:None)
+                    query_list (list): List of dictionaries which contain query to select the row to update (see documentation of get())  (def:None)
                     add_datetime (bool): If true, add datetime to the column datetime_column (def: False)
                     updated_by (bool): If true, add the login name of the person that updated the record (def: False)
                     datetime_column (string): Column name where to add datetime to if update_by=True (def: datetime_column)
@@ -515,7 +510,7 @@ class Connect_Molgenis():
                     queries = []
                     for query in query_list:
                         queries.append(self._sanitize_data(query, False, False, False, False))
-                    entity_data = self.query_entity_rows(entity_name, queries)
+                    entity_data = self.get(entity_name, queries)
                     if len(entity_data['items']) == 0:
                         self.logger.error('Query returned 0 results, no row to update.')
                         raise Exception('Query returned 0 results, no row to update.')
@@ -613,11 +608,10 @@ class Connect_Molgenis():
             def delete_all_entity_rows(self,entity_name):
                 '''delete all entity rows'''
                 entity_data = self.get_entity(entity_name)
-                # because I can only select 100 rows, have to select untill table is empty. <<<<< TODO: figure out how to change num
                 server_response_list = []
                 while len(entity_data['items']) > 0:
                     server_response_list.extend(self.delete_entity_data(entity_data,entity_name))
-                    entity_data = self.get_entity(entity_name)
+                    entity_data = self.get(entity_name,num=50000)
                 return server_response_list
             
             def delete_entity_rows(self, entity_name, query):
@@ -625,9 +619,9 @@ class Connect_Molgenis():
             
                 Args:
                     entity_name (string): Name of the entity to update
-                    query (list): List of dictionaries which contain query to select the row to update (see documentation of query_entity_rows)
+                    query (list): List of dictionaries which contain query to select the row to update (see documentation of get())
                 '''
-                entity_data = self.query_entity_rows(entity_name, query)
+                entity_data = self.get(entity_name, query)
                 if len(entity_data['items']) == 0:
                     self.logger.error('Query returned 0 results, no row to delete.')
                     raise Exception('Query returned 0 results, no row to delete.')

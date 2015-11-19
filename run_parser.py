@@ -84,7 +84,7 @@ parser.add_argument("--samplesheet", help="Overwrite samplesheet in CONFIG", def
 parser.add_argument("--analysis_description", help="Overwrite analysis_description in CONFIG",default = configSectionMap("settings")['analysis_description'])
 parser.add_argument("--package", help="Overwrite package in CONFIG", default=configSectionMap('settings')['package'])
 parser.add_argument("--server", help="Overwrite server in CONFIG", default=configSectionMap('settings')['server'])
-parser.add_argument("--new_pass", help="Use a new password even if file with is saved~", action='store_true', default=configSectionMap('settings')['new_pass_file'])
+parser.add_argument("--new_pass", help="Use a new password even if file with password is saved", action='store_true', default=configSectionMap('settings')['new_pass_file'])
 parser.add_argument("--remove_pass_file", help="Remove the saved file with password for server", action='store_true', default=configSectionMap('settings')['remove_pass_file'])
 parser.add_argument("--password_location", help="Location to save password to (save it to a folder only you have access to. If not possible, make sure remove_pass_file is set to True in Config file)", default=configSectionMap('settings')['password_location'])
 parser.add_argument("--experiment_type", help="Change the experiment type in the Config file (rna_seq,atac_seq,pro_seq,unkown,hic-seq,dnase-seq,gro_seq)", default=configSectionMap("settings")['experiment_type'])
