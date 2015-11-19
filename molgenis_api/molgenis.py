@@ -132,6 +132,7 @@ class Connect_Molgenis():
                         self.check_server_response(server_response, 'retrieve token',url_used=self.api_v1_url+'/login/')
                     else:
                         raise
+                print()
                 headers = {'Content-type':'application/json', 'x-molgenis-token': server_response.json()['token'], 'Accept':'application/json'}
                 self.session.headers.update(headers)
                 self.login_time = timeit.default_timer()
