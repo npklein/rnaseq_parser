@@ -132,19 +132,9 @@ class Connect_Molgenis():
                         self.check_server_response(server_response, 'retrieve token',url_used=self.api_v1_url+'/login/')
                     else:
                         raise
-                headers = {'Content-type':'application/json', 'x-molgenis-token': server_response.json()['token']} #, 'Accept':'application/json'
+                headers = {'Content-type':'application/json', 'x-molgenis-token': server_response.json()['token'], 'Accept':'application/json'}
                 self.session.headers.update(headers)
                 self.login_time = timeit.default_timer()
-                return headers
-            def _getTokenHeader(self):
-                try:
-                    return {"x-molgenis-token":self.token}
-                except AttributeError:
-                    return {}
-
-            def _getTokenHeaderWithContentType(self):
-                headers = self._getTokenHeader()
-                headers.update({"Content-Type":"application/json"})
                 return headers
 
             def logout(self):
@@ -207,6 +197,8 @@ class Connect_Molgenis():
                         self.logger.error(self.saved_arguments[0]+' Not a function')
                 if str(server_response) == '<Response [400]>':
                     error(server_response)
+                    self.logger.debug(server_response.text)
+                    raise Exception(server_response.text)
                 elif str(server_response) == '<Response [404]>':
                     error(server_response)
                     error_message = 'Page not found'
@@ -440,7 +432,24 @@ class Connect_Molgenis():
                 self.session.headers = old_header
                 added_id = self._add_entity_rows_or_file_server_response(entity_name, data, server_response,'file', api_version='v1',ignore_duplicates=ignore_duplicates)
                 return added_id
+            
+            def pretty_print_request(self,req):
+                """For debugging purposes
                 
+                At this point it is completely built and ready
+                to be fired; it is "prepared".
+            
+                However pay attention at the formatting used in 
+                this function because it is programmed to be pretty 
+                printed and may differ from the actual request.
+                """
+                self.logger.debug('{}\n{}\n{}\n\n{}'.format(
+                    '-----------START-----------',
+                    req.method + ' ' + req.url,
+                    '\n'.join('{}: {}'.format(k, v) for k, v in req.headers.items()),
+                    req.params,
+                ))
+               
             def get(self, entity_name, query=None,attributes=None, num=100, start=0, sortColumn=None, sortOrder=None):
                 '''Get row(s) from entity with a query
                 
@@ -455,6 +464,9 @@ class Connect_Molgenis():
                 Returns:
                     result (dict): json dictionary of retrieve data
                 '''
+                if num > 10000:
+                    self.logger.error('Too many rows requested, can not request more than 10000')
+                    raise ValueError('Too many rows requested, can not request more than 10000')
                 if query:
                     if len(query) == 0:
                         self.logger.error('Can\'t search with empty query')
@@ -462,17 +474,15 @@ class Connect_Molgenis():
                     json_query = json.dumps({'q':query})
                     server_response = self.session.post(self.api_v1_url+'/'+urllib.parse.quote_plus(entity_name), data = json_query,
                                                     params={"_method":"GET", "attributes":attributes, "num": num, "start": start, "sortColumn":sortColumn, "sortOrder": sortOrder},)
-                    server_response_json = server_response.json()
                     self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name, query_used=json_query)
                 else:
-                    print(self.session.headers)
-                    self.session.headers.update({'Content-Type':'text/html'})
-                    print(self.session.headers)
-                    server_response = self.session.post(self.api_v1_url+'/'+urllib.parse.quote_plus(entity_name),
-                                                    params={"_method":"GET", "attributes":attributes, "num": num, "start": start, "sortColumn":sortColumn, "sortOrder": sortOrder},)
-                    server_response_json = server_response.json()
+                    req = requests.Request('GET',self.api_v1_url+'/'+urllib.parse.quote_plus(entity_name),headers=self.session.headers,
+                                                    params={"attributes":attributes, "num": num, "start": start, "sortColumn":sortColumn, "sortOrder": sortOrder})
+                    prepared = req.prepare()
+                    server_response = self.session.send(prepared)
+                    self.pretty_print_request(req)
                     self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name)
-
+                server_response_json = server_response.json()
                 if server_response_json['total'] >= server_response_json['num']:
                     self.logger.warning(str(server_response_json['total'])+' number of rows selected. Max number of rows to retrieve data for is set to '+str(server_response_json['num'])+'.\n'
                                 +str(server_response_json['num']-server_response_json['total'])+' rows will not be in the results.')
@@ -620,7 +630,7 @@ class Connect_Molgenis():
                 server_response_list = []
                 while len(entity_data['items']) > 0:
                     server_response_list.extend(self.delete_entity_data(entity_data,entity_name))
-                    entity_data = self.get(entity_name,num=50000)
+                    entity_data = self.get(entity_name,num=10000)
                 return server_response_list
             
             def delete_entity_rows(self, entity_name, query):
