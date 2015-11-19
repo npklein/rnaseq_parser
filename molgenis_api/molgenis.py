@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 import copy
 import timeit
-
+import urllib
 class Connect_Molgenis():
     """This class only has __enter__ and __exit__ function to force use of with statement. This way the passwords saved to file can be cleaned up"""
     def __init__(self, server_url, remove_pass_file = True, new_pass_file = True, password_location = '~',log_file = 'molgenis.log', logging_level='DEBUG', logfile_mode = 'w', profile=True):
@@ -109,7 +109,7 @@ class Connect_Molgenis():
                 data = json.dumps({'username': security.retrieve('Username'), 'password': security.retrieve('Password')})
                 self.logger.debug('Trying to log in with data from '+str(security.PASSPHRASE_FILE) +' to: '+str(self.api_v1_url)+'/login/ with username: '+'*'*len(security.retrieve('Username'))+' password: '+'*'*len(security.retrieve('Password')))
                 server_response = self.session.post( self.api_v1_url+'/login/',
-                                               data=data, headers={'Content-type':'application/json'} )
+                                               data=data, headers={'Content-Type':'application/json'} )
                 try:
                     self.check_server_response(server_response, 'retrieve token',url_used=self.api_v1_url+'/login/')
                 except Exception as e:
@@ -128,11 +128,11 @@ class Connect_Molgenis():
                             self.api_v1_url = 'https://'+self.api_v1_url
                         self.logger.debug('Trying to log in with data from '+str(security.PASSPHRASE_FILE) +' to: '+str(self.api_v1_url)+'/login/ with username: '+'*'*len(security.retrieve('Username'))+' password: '+'*'*len(security.retrieve('Password')))
                         server_response = requests.post( self.api_v1_url+'/login/',
-                                                   data=data, headers={'Content-type':'application/json'} )
+                                                   data=data, headers={'Content-Type':'application/json'} )
                         self.check_server_response(server_response, 'retrieve token',url_used=self.api_v1_url+'/login/')
                     else:
                         raise
-                headers = {'Content-type':'application/json', 'x-molgenis-token': server_response.json()['token'], 'Accept':'application/json'}
+                headers = {'Content-Type':'application/json', 'x-molgenis-token': server_response.json()['token'], 'Accept':'application/json'}
                 self.session.headers.update(headers)
                 self.login_time = timeit.default_timer()
                 return headers
@@ -460,13 +460,15 @@ class Connect_Molgenis():
                         self.logger.error('Can\'t search with empty query')
                         raise ValueError('Can\'t search with empty query')
                     json_query = json.dumps({'q':query})
-                    server_response = self.session.post(self.api_v1_url+'/'+entity_name+'?_method=GET', data = json_query,
+                    server_response = self.session.post(self.api_v1_url+'/'+urllib.parse.quote_plus(entity_name), data = json_query,
                                                     params={"_method":"GET", "attributes":attributes, "num": num, "start": start, "sortColumn":sortColumn, "sortOrder": sortOrder},)
                     server_response_json = server_response.json()
                     self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name, query_used=json_query)
                 else:
-                    self.session.headers.update({'Content-Type': None})
-                    server_response = self.session.post(self.api_v1_url+'/'+entity_name+'?_method=GET',
+                    print(self.session.headers)
+                    self.session.headers.update({'Content-Type':'text/html'})
+                    print(self.session.headers)
+                    server_response = self.session.post(self.api_v1_url+'/'+urllib.parse.quote_plus(entity_name),
                                                     params={"_method":"GET", "attributes":attributes, "num": num, "start": start, "sortColumn":sortColumn, "sortOrder": sortOrder},)
                     server_response_json = server_response.json()
                     self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name)
