@@ -607,7 +607,7 @@ class Connect_Molgenis():
             
             def delete_all_entity_rows(self,entity_name):
                 '''delete all entity rows'''
-                entity_data = self.get_entity(entity_name)
+                entity_data = self.get(entity_name)
                 server_response_list = []
                 while len(entity_data['items']) > 0:
                     server_response_list.extend(self.delete_entity_data(entity_data,entity_name))
