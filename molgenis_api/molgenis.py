@@ -187,7 +187,7 @@ class Connect_Molgenis():
                         pass # no json oobject in server_response
                 # if service unavailable, try again in 5 minutes
                 if str(server_response) == '<Response [503]>':
-                    self.logger.debu('Try again in 5 minutes')
+                    self.logger.debug('Try again in 5 minutes')
                     time.sleep(300)
                     if self.saved_arguments[0] == 'add_multiple_rows':
                         self.add_multiple_rows(self.saved_arguments[1:])
@@ -483,9 +483,9 @@ class Connect_Molgenis():
                     self.pretty_print_request(req)
                     self.check_server_response(server_response, 'Get rows from entity',entity_used=entity_name)
                 server_response_json = server_response.json()
-                if server_response_json['total'] >= server_response_json['num']:
-                    self.logger.warning(str(server_response_json['total'])+' number of rows selected. Max number of rows to retrieve data for is set to '+str(server_response_json['num'])+'.\n'
-                                +str(server_response_json['num']-server_response_json['total'])+' rows will not be in the results.')
+                if server_response_json['total'] >= num:
+                    self.logger.warning(str(server_response_json['total'])+' number of rows selected. Max number of rows to retrieve data for is set to '+str(num)+'.\n'
+                                +str(num-server_response_json['total'])+' rows will not be in the results.')
                     self.logger.info('Selected '+str(server_response_json['total'])+' row(s).')
                 self.logger.debug('query used: '+str(query)+'\n'+
                                   'searching entity: '+str(entity_name)+'\n'+
