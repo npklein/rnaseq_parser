@@ -175,7 +175,7 @@ with molgenis.Connect_Molgenis(configSectionMap('settings')['server'],
     elif args.delete_entity:
         connection.delete_all_entity_rows(configSectionMap('settings')['package']+args.delete_entity)
     # always make sure analysis exists
-    connection.add_entity_rows(package+'Analysis_info', data_list=[{'id':configSectionMap('settings')['analysis_id'], 'analysis_description':configSectionMap('settings')['analysis_description']}],ignore_duplicates=True)
+    connection.add(package+'Analysis_info', data_list=[{'id':configSectionMap('settings')['analysis_id'], 'analysis_description':configSectionMap('settings')['analysis_description']}],ignore_duplicates=True)
 
     start_time = time.time()
     print('\n'+'~'*10+'STARTING'+'~'*10+'\n')

@@ -187,10 +187,11 @@ class Connect_Molgenis():
                         pass # no json oobject in server_response
                 # if service unavailable, try again in 5 minutes
                 if str(server_response) == '<Response [503]>':
+                    self.logger.debug(str(server_response)+' -> '+server_response.reason+'\n')
                     self.logger.debug('Try again in 5 minutes')
                     time.sleep(300)
-                    if self.saved_arguments[0] == 'add_multiple_rows':
-                        self.add_multiple_rows(self.saved_arguments[1:])
+                    if self.saved_arguments[0] == 'add_rows':
+                        self.add(self.saved_arguments[1:])
                     elif self.saved_arguments[0] == 'add_file':
                         self.add_file(self.saved_arguments[1:])
                     else:
@@ -258,7 +259,7 @@ class Connect_Molgenis():
                 data = dict([a, str(x)] for a, x in data.items() if len(str(x).strip())>0)
                 return data
                         
-            def _add_entity_rows_or_file_server_response(self, entity_name, data, server_response, add_type, api_version='v2',ignore_duplicates=False):
+            def _add_or_file_server_response(self, entity_name, data, server_response, add_type, api_version='v2',ignore_duplicates=False):
                 '''Add datetime and added by to entity row or file row
                 
                 entity_name (string): Name of the entity
@@ -323,13 +324,13 @@ class Connect_Molgenis():
                             return added_ids
                     else:
                         raise
-                raise Exception('Code logic broken, check _add_entity_rows_or_file_server_response function')
+                raise Exception('Code logic broken, check _add_or_file_server_response function')
               
             _add_datetime_default = False
             _added_by_default = False
             _add_datetime_default = False
             _added_by_default = False
-            def add_entity_rows(self, entity_name, data_list, validate_json=False, add_datetime=None, datetime_column='datetime_added', added_by=None, added_by_column='added_by',ignore_duplicates=False):
+            def add(self, entity_name, data_list, validate_json=False, add_datetime=None, datetime_column='datetime_added', added_by=None, added_by_column='added_by',ignore_duplicates=False):
                 '''Add one or multiple rows to an entity
                 
                 Args:
@@ -346,9 +347,9 @@ class Connect_Molgenis():
                     
                 Example:
                     >>> with Connect_Molgenis('https://localhoost:8080') as connection:
-                    >>>     print (connection.add_entity_rows('EntityName',[{'column_A':'row 1','column_B', 'row 1'},{'column_A':'row 2','column_B':'row 2'}])
+                    >>>     print (connection.add('EntityName',[{'column_A':'row 1','column_B', 'row 1'},{'column_A':'row 2','column_B':'row 2'}])
                     >>> with Connect_Molgenis('https://localhoost:8080') as connection:
-                    >>>>     print (connection.add_entity_rows('EntityName',{'column_A':'row 1','column_B', 'row 1'})
+                    >>>>     print (connection.add('EntityName',{'column_A':'row 1','column_B', 'row 1'})
                     AAAACUGUI6T5KJXRMQK476QAAE
                     
                 '''
@@ -369,13 +370,13 @@ class Connect_Molgenis():
                     for data in data_list:
                         self.validate_data(entity_name, data)
                 # need to save previous input incase service is unavailable, so that we can retry later
-                self.saved_arguments = ['add_multiple_rows', entity_name, data_list, validate_json, add_datetime, datetime_column,added_by,added_by_column,ignore_duplicates]
+                self.saved_arguments = ['add_rows', entity_name, data_list, validate_json, add_datetime, datetime_column,added_by,added_by_column,ignore_duplicates]
                 sanitized_data_list = [self._sanitize_data(data, add_datetime, datetime_column, added_by, added_by_column) for data in data_list]
                 request_url = self.api_v2_url+'/'+entity_name+'/'
                 # post to the entity with the json data
                 server_response = self.session.post(request_url, data=json.dumps({"entities":sanitized_data_list}))
                 self.added_rows += len(sanitized_data_list)
-                added_ids = self._add_entity_rows_or_file_server_response(entity_name, data_list, server_response,'entity_row','v2',ignore_duplicates=ignore_duplicates)
+                added_ids = self._add_or_file_server_response(entity_name, data_list, server_response,'entity_row','v2',ignore_duplicates=ignore_duplicates)
                 return added_ids
             def add_file(self, file_path, description, entity_name, extra_data=None, file_name=None, add_datetime=False, datetime_column='datetime_added', added_by=None, added_by_column='added_by', io_stream = None,ignore_duplicates=False):
                 '''Add a file to entity File.
@@ -430,7 +431,7 @@ class Connect_Molgenis():
 
                 self.added_files += 1
                 self.session.headers = old_header
-                added_id = self._add_entity_rows_or_file_server_response(entity_name, data, server_response,'file', api_version='v1',ignore_duplicates=ignore_duplicates)
+                added_id = self._add_or_file_server_response(entity_name, data, server_response,'file', api_version='v1',ignore_duplicates=ignore_duplicates)
                 return added_id
             
             def pretty_print_request(self,req):
@@ -626,7 +627,7 @@ class Connect_Molgenis():
             
             def delete_all_entity_rows(self,entity_name):
                 '''delete all entity rows'''
-                entity_data = self.get(entity_name)
+                entity_data = self.get(entity_name,num=10000)
                 server_response_list = []
                 while len(entity_data['items']) > 0:
                     server_response_list.extend(self.delete_entity_data(entity_data,entity_name))

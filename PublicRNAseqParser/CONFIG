@@ -10,7 +10,7 @@ entities = PublicRNAseqParser/entities.txt
 [settings]
 analysis_id = 1
 analysis_description = Testing database
-package = public_rnaseq_
+package = public_rnaseq_4_
 server = http://localhost:8080
 remove_pass_file = True
 experiment_type = rna_seq
