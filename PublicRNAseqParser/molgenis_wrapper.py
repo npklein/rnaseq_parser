@@ -122,9 +122,7 @@ class Connect_Molgenis():
                     if meta_data['attributes'][attribute]['unique'] == True:
                         unique_attributes.append(attribute)
                 id_list = []
-                print(entity_name)
                 for attribute in unique_attributes:
-                    print(attribute)
                     if isinstance(data,dict):
                         if attribute in data:
                             id_list.append(data[attribute])
@@ -139,7 +137,8 @@ class Connect_Molgenis():
                 duplicate_ids = []
                 to_remove = []
                 for result in self.session.get(entity_name,num=10000):
-                    if result[attribute] in id_list:
+                    print(result)
+                    if attribute in result and result[attribute] in id_list:
                         if isinstance(data,dict):
                             return {},[result[self.get_id_attribute(entity_name)]]
                         duplicate_ids.append(result[attribute])
