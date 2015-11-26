@@ -46,7 +46,7 @@ def add_multiple_rows(entity, data,connection,ignore_duplicates=False):
         # merge the lists of returned IDs
         added_ids += connection.add(entity,data=data)
     return added_ids
-def parse_ena(ena_file,connection,package):
+def parse_ena(ena_file,connection,package,project):
     '''finished'''
     print ('Start ENA')
     columns_to_change = ['fastq_aspera','fastq_bytes','fastq_ftp','fastq_md5']
@@ -87,8 +87,9 @@ def parse_ena(ena_file,connection,package):
                         column += '_1'
                 data[column] = value
             to_add.append(data)
-
-        add_multiple_rows(entity=package+'ENA',data=to_add,connection=connection)
+        added_ids = add_multiple_rows(entity=package+'ENA',data=to_add,connection=connection)
+        for i, data in enumerate(to_add):
+            connection.update_entity_rows(package+'Samples', data={'verifyBamID':added_ids[i]}, row_id = str(project)+'-'+str(data['run_accession'])+'-'+str(analysis_id))
 def parse_samples(sample_sheet_path,connection,package,experiment_type):
     print ('Start Samples')
     sample_sheet_file = open(sample_sheet_path)
@@ -110,9 +111,7 @@ def parse_samples(sample_sheet_path,connection,package,experiment_type):
             data['sequence_type'] = 'paired'
         to_add.append(data)
     added_ids = add_multiple_rows(entity=package+'Samples',data=to_add,connection=connection)
-    if 'ENA' in sample_sheet_path:
-        connection.update_entity_rows(package+'Samples', data={'ena':','.join(added_ids)}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
-        
+       
 def parse_rnaseq_tools(sh_file_path,connection,package):
     '''filepath to .sh file used to run tool'''
     def time_from_log(logfile_text):

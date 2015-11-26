@@ -188,7 +188,7 @@ with molgenis_wrapper.Connect_Molgenis(configSectionMap('settings')['server'],
     if args.hisat:
         parse_output.parse_hisat(rundir_QC,connection,package=package)
     if args.ena:
-        parse_output.parse_ena( configSectionMap('paths')['ena'],connection, package=package)
+        parse_output.parse_ena( configSectionMap('paths')['ena'],connection, package=package,project=configSectionMap('settings')['project'])
     if args.verifyBamID:
         parse_output.parse_verifyBamID(rundir_QC,connection, package)
     if args.samToFilteredBam:
