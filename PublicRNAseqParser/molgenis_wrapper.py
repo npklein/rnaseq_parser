@@ -35,7 +35,6 @@ class Connect_Molgenis():
                   server_url (string): The url to the molgenis server
                 
             Example:
-                from molgenis_api import molgenis
                 # make a connection
                 with open molgenis.Connect_Molgenis()('http://localhost:8080') as connection:
                     # add a row to the entity public_rnaseq_Individuals

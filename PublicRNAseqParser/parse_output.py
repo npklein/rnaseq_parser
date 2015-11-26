@@ -5,7 +5,7 @@ Created on Jul 4, 2015
 
 TODO: Make sure all non-rnaseqtool tables also get duplicate value prevention
 '''
-from molgenis_api import molgenis
+from PublicRNAseqParser import molgenis_wrapper
 import warnings
 import os
 import re
@@ -90,7 +90,6 @@ def parse_ena(ena_file,connection,package):
 
         add_multiple_rows(entity=package+'ENA',data=to_add,connection=connection)
 def parse_samples(sample_sheet_path,connection,package,experiment_type):
-    '''wip'''
     print ('Start Samples')
     sample_sheet_file = open(sample_sheet_path)
     column_names = sample_sheet_file.readline().strip('\n').split(',')
@@ -110,7 +109,10 @@ def parse_samples(sample_sheet_path,connection,package,experiment_type):
         else:
             data['sequence_type'] = 'paired'
         to_add.append(data)
-    add_multiple_rows(entity=package+'Samples',data=to_add,connection=connection)
+    added_ids = add_multiple_rows(entity=package+'Samples',data=to_add,connection=connection)
+    if 'ENA' in sample_sheet_path:
+        connection.update_entity_rows(package+'Samples', data={'ena':added_ids}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
+        
 def parse_rnaseq_tools(sh_file_path,connection,package):
     '''filepath to .sh file used to run tool'''
     def time_from_log(logfile_text):
