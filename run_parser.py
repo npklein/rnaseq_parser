@@ -16,9 +16,9 @@ import time
 import argparse
 import random
 import configparser
-from molgenis_api import molgenis
+from PublicRNAseqParser import molgenis_wrapper
 import sys
-import datetime
+import requests
 
 class MyParser(argparse.ArgumentParser):
     def error(self, message):
@@ -91,6 +91,7 @@ parser.add_argument("--experiment_type", help="Change the experiment type in the
 parser.add_argument("--ENA_path", help="Change the path to ENA info file in the Config file", default=configSectionMap("paths")['ena'])
 parser.add_argument("--max_rows", help="Set the maximum amount of rows to be added at the same time", default=configSectionMap("settings")['max_rows'])
 args = parser.parse_args()
+
 if not (args.all or args.hisat or args.ena or args.variantEval or args.verifyBamID or args.verifyBamID or args.bqsr or args.analyseCovariates
         or args.addOrReplaceReadGroups or args.samToFilteredBam or args.sortBam or args.indelRealignmentKnown or args.gatkSplitNtrim
         or args.rMetrics_QC or args.rMetrics_genotypeCalling or args.cMetrics_QC or args.cMetrics_genotypeCalling or args.flagstat or args.md5sum
@@ -122,7 +123,7 @@ from PublicRNAseqParser import parse_output
 print('Running parse_RNAseq_parser with configuration options:')
 print((open('PublicRNAseqParser/CONFIG').read()))
   
-with molgenis.Connect_Molgenis(configSectionMap('settings')['server'],
+with molgenis_wrapper.Connect_Molgenis(configSectionMap('settings')['server'],
                                 remove_pass_file = configSectionMap('settings')['remove_pass_file'],
                                 new_pass_file = configSectionMap('settings')['new_pass_file']) as connection:
     connection._add_datetime_default = True
@@ -158,16 +159,17 @@ with molgenis.Connect_Molgenis(configSectionMap('settings')['server'],
             for entity in entities:
                 entities_list.append(entity)
             index = 0
+            print('Deleting all rows of all enities in entities.txt....')
             while len(entities_list) > 0:
                 if index >= len(entities_list):
                     index = 0
                 try:
                     entity = entities_list[index]
-                    print(('Trying to delete rows from entity: '+str(entity)))
                     connection.delete_all_entity_rows(configSectionMap('settings')['package']+entity)
                     entities_list.remove(entity)
                 except Exception as e:
-                    if 'foreign key constraint fails' in str(e) or 'Cannot delete entity because there are other entities referencing it. Delete these first' in str(e):
+                    message = e.response.json()['errors'][0]['message']
+                    if 'foreign key constraint fails' in message or 'Cannot delete entity because there are other entities referencing it. Delete these first' in message:
                         pass
                     else:
                         raise
@@ -175,8 +177,11 @@ with molgenis.Connect_Molgenis(configSectionMap('settings')['server'],
     elif args.delete_entity:
         connection.delete_all_entity_rows(configSectionMap('settings')['package']+args.delete_entity)
     # always make sure analysis exists
-    connection.add(package+'Analysis_info', data_list=[{'id':configSectionMap('settings')['analysis_id'], 'analysis_description':configSectionMap('settings')['analysis_description']}],ignore_duplicates=True)
-
+    try:
+        connection.add(package+'Analysis_info', data=[{'id':configSectionMap('settings')['analysis_id'], 'analysis_description':configSectionMap('settings')['analysis_description']}])
+    except requests.exceptions.HTTPError as e:
+        if 'Duplicate value' in str(e):
+            pass
     start_time = time.time()
     print('\n'+'~'*10+'STARTING'+'~'*10+'\n')
     parse_output.parse_samples( configSectionMap('paths')['samplesheet'],connection,package=package,experiment_type=configSectionMap('settings')['experiment_type'])

@@ -121,16 +121,33 @@ class Session():
         response.raise_for_status();
         return response;
 
+    def update(self, entity_name, row_id, data = {}, **kwargs):
+        '''Updates 1 or more attributes of a single entity row
+
+        Args:
+        entity -- fully qualified name of the entity
+        row_id -- id of the row of the entity to update
+        data -- dictionary mapping attribute name to non-file attribute value for the entity row, gets merged with the kwargs argument
+        **kwargs -- keyword arguments get merged with the data argument
+        '''
+        server_response_list = []
+        for key in data:
+            response = self.session.put(self.url+'v1/'+quote_plus(entity_name)+'/'+str(row_id)+'/'+key, data='"'+data[key]+'"', headers = self._get_token_header_with_content_type())
+            response.raise_for_status();
+            server_response_list.append(response)
+        return server_response_list
+
     def delete(self, entity, id):
         '''Deletes a single entity row from an entity repository.'''
-        response = self.session.delete(self.url + "v1/" + quote_plus(entity)+ "/" + quote_plus(id), headers = self._get_token_header())
+        response = self.session.delete(self.url + "v1/" + quote_plus(entity)+ "/" + quote_plus(str(id))+'/', headers = self._get_token_header())
         response.raise_for_status();
         return response;
 
     def get_entity_meta_data(self, entity):
         '''Retrieves the metadata for an entity repository.'''
         response = self.session.get(self.url + "v1/" + quote_plus(entity) + "/meta?expand=attributes", headers = self._get_token_header()).json()
-        response.raise_for_status();
+        if not isinstance(response,dict):
+            response.raise_for_status();
         return response;
 
     def get_attribute_meta_data(self, entity, attribute):
@@ -158,3 +175,5 @@ class Session():
         z = x.copy()
         z.update(y)
         return z
+
+                
