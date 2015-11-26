@@ -111,7 +111,7 @@ def parse_samples(sample_sheet_path,connection,package,experiment_type):
         to_add.append(data)
     added_ids = add_multiple_rows(entity=package+'Samples',data=to_add,connection=connection)
     if 'ENA' in sample_sheet_path:
-        connection.update_entity_rows(package+'Samples', data={'ena':added_ids}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
+        connection.update_entity_rows(package+'Samples', data={'ena':','.join(added_ids)}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
         
 def parse_rnaseq_tools(sh_file_path,connection,package):
     '''filepath to .sh file used to run tool'''
