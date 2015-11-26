@@ -139,7 +139,6 @@ class Connect_Molgenis():
                 duplicate_ids = []
                 to_remove = []
                 for result in self.session.get(entity_name,num=10000):
-                    print(result.keys())
                     if result[attribute] in id_list:
                         if isinstance(data,dict):
                             return {},[result[self.get_id_attribute(entity_name)]]
@@ -389,6 +388,7 @@ class Connect_Molgenis():
                 for rows in items:
                     row_id = rows[id_attribute]
                     try:
+                        self.logger.debug('Deleted row from: '+str(entity_name))
                         self.session.delete(entity_name.strip(),row_id)
                     except requests.exceptions.HTTPError as e:
                         self.logger.debug(e.response.json())
