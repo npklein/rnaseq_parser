@@ -45,7 +45,7 @@ class Connect_Molgenis():
                     connection.update_entity_row('public_rnaseq_Individuals',[{'field':'id', 'operator':'EQUALS', 'value':'John Doe'}], {'gender':'Female'})  
             """
         
-            def __init__(self, server_url, remove_pass_file = True, new_pass_file = True, password_location = '~',log_file = 'molgenis.log', logging_level='DEBUG', logfile_mode = 'w'):
+            def __init__(self, server_url, remove_pass_file = True, new_pass_file = True, password_location = '~',log_file = 'molgenis.log', logging_level='ERROR', logfile_mode = 'w'):
                 '''Initialize Python api to talk to Molgenis Rest API
                 
                 Args:
@@ -137,7 +137,6 @@ class Connect_Molgenis():
                 duplicate_ids = []
                 to_remove = []
                 for result in self.session.get(entity_name,num=10000):
-                    print(result)
                     if attribute in result and result[attribute] in id_list:
                         if isinstance(data,dict):
                             return {},[result[self.get_id_attribute(entity_name)]]

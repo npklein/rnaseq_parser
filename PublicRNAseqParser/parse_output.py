@@ -13,6 +13,7 @@ import glob
 import datetime
 import zipfile
 import configparser
+import requests
 config = configparser.RawConfigParser()
 config.read(r'PublicRNAseqParser/CONFIG')
 if __name__ == "__main__":
@@ -110,7 +111,12 @@ def parse_samples(sample_sheet_path,connection,package,experiment_type):
         else:
             data['sequence_type'] = 'paired'
         to_add.append(data)
-    added_ids = add_multiple_rows(entity=package+'Samples',data=to_add,connection=connection)
+    try:
+        added_ids = add_multiple_rows(entity=package+'Samples',data=to_add,connection=connection)
+    except requests.exceptions.HTTPError as e:
+        if 'Duplicate value' in e.response.json()['errors'][0]['message']:
+            print(e.response.json()['errors'][0]['message'])
+        
        
 def parse_rnaseq_tools(sh_file_path,connection,package):
     '''filepath to .sh file used to run tool'''
