@@ -28,7 +28,7 @@ def configSectionMap(section):
     return dict1
 analysis_id = configSectionMap("settings")['analysis_id']
 analysis_description = configSectionMap("settings")['analysis_description']
-def add_multiple_rows(entity, data,connection,ignore_duplicates=False):
+def add_multiple_rows(entity, data,connection):
     '''Helper function for adding multiple rows at the same time. Takes the max_rows from the CONFIG file
        and a list of data to be added to entity, adds them all, and returns a list of all the IDs
     
@@ -36,7 +36,6 @@ def add_multiple_rows(entity, data,connection,ignore_duplicates=False):
         entity (string): Entity to add it to
         data (list): list of data to add to entity
         connection (obj): Connection object
-        ingore_duplicates (bool): If True, give a warning instead of error when trying to add a duplicate value
     Returns:
         list of added IDs
     '''
@@ -237,7 +236,7 @@ def parse_verifyBamID(runinfo_folder_QC,connection,package):
                 position = groups.group(2)
                 to_add.append({'chromosome':chromosome,'type':marker_type,'position':position})
             skipped_marker = ','.join(add_multiple_rows(entity=package+'Skipped_marker',data=to_add,
-                                                        connection=connection,ignore_duplicates=False))
+                                                        connection=connection))
             pattern = '(Comparing with individual \S+.. Optimal fIBD = \d+\.\d+, LLK0 = \d+\.\d+, LLK1 = \d+\.\d+ for readgroup \d+\n'\
                      +'Best Matching Individual is NA with IBD = \d+.\d+\n'\
                      +'Self Individual is NA with IBD = \d+.\d+)'
@@ -527,8 +526,7 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
                     img_data = archive.open(name)
                     names.append(description)
                     graphs[description] = connection.add(name, description,package+'File', io_stream = img_data,
-                                                              extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+name.replace(' ','_')},
-                                                              ignore_duplicates=True)
+                                                              extra_data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+name.replace(' ','_')})
                 if 'fastqc_data.txt' in name:
                     fastqc_data = archive.read(name)
         fastqc_groups = re.search('Filename\s+(\S+)\n'\
