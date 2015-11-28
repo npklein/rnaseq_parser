@@ -183,8 +183,11 @@ class Connect_Molgenis():
                     added_ids = self.session.add_all(entity_name, sanitized_data_list)
                     self.added_rows += len(sanitized_data_list)
                 except requests.exceptions.HTTPError as e:
-                    if 'Duplicate value' in e.response.json()['errors'][0]['message']:
-                        self.logger.debug(e.response.json()['errors'][0]['message'])
+                    try:
+                        if 'Duplicate value' in e.response.json()['errors'][0]['message']:
+                            self.logger.debug(e.response.json()['errors'][0]['message'])
+                    except ValueError:
+                        raise
                 added_ids += duplicate_ids
                 self._logging(entity_name,'entity_row')
                 return added_ids
