@@ -110,14 +110,14 @@ def parse_samples(sample_sheet_path,connection,package,experiment_type):
         else:
             data['sequence_type'] = 'paired'
         to_add.append(data)
-    try:
-        added_ids = add_multiple_rows(entity=package+'Samples',data=to_add,connection=connection)
-    except requests.exceptions.HTTPError as e:
-        try:
-            if 'Duplicate value' in e.response.json()['errors'][0]['message']:
-                print(e.response.json()['errors'][0]['message'])
-        except ValueError:
-            raise
+    #try:
+    added_ids = add_multiple_rows(entity=package+'Samples',data=to_add,connection=connection)
+    #except requests.exceptions.HTTPError as e:
+    #    try:
+    #        if 'Duplicate value' in e.response.json()['errors'][0]['message']:
+    #            print(e.response.json()['errors'][0]['message'])
+    #    except ValueError:
+    #        raise
        
 def parse_rnaseq_tools(sh_file_path,connection,package):
     '''filepath to .sh file used to run tool'''

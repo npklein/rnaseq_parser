@@ -178,7 +178,6 @@ class Connect_Molgenis():
                 # post to the entity with the json data
                 if len(sanitized_data_list) == 1 and len(sanitized_data_list[0]) == 0:
                     return None
-                added_ids = []
                 added_ids = self.session.add_all(entity_name, sanitized_data_list)
                 self.added_rows += len(sanitized_data_list)
                 added_ids += duplicate_ids
