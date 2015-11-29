@@ -179,15 +179,8 @@ class Connect_Molgenis():
                 if len(sanitized_data_list) == 1 and len(sanitized_data_list[0]) == 0:
                     return None
                 added_ids = []
-                try:
-                    added_ids = self.session.add_all(entity_name, sanitized_data_list)
-                    self.added_rows += len(sanitized_data_list)
-                except requests.exceptions.HTTPError as e:
-                    try:
-                        if 'Duplicate value' in e.response.json()['errors'][0]['message']:
-                            self.logger.debug(e.response.json()['errors'][0]['message'])
-                    except ValueError:
-                        raise
+                added_ids = self.session.add_all(entity_name, sanitized_data_list)
+                self.added_rows += len(sanitized_data_list)
                 added_ids += duplicate_ids
                 self._logging(entity_name,'entity_row')
                 return added_ids
