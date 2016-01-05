@@ -71,6 +71,7 @@ parser.add_argument("--delete_all", help="Delete all rows of all entites of pack
 parser.add_argument("--analysis_id", help="Overwrite current analysis ID in CONFIG",default=configSectionMap("settings")['analysis_id'])
 parser.add_argument("--runinfo_folder_qc", help="Overwrite runinfo_folder_qc in CONFIG",default=configSectionMap("paths")['runinfo_folder_qc'])
 parser.add_argument("--runinfo_folder_genotypecalling", help="Overwrite runinfo_folder_genotypecalling in CONFIG",default=configSectionMap("paths")['runinfo_folder_genotypecalling'])
+parser.add_argument("--runinfo_folder_quantification", help="Overwrite runinfo_folder_quantification in CONFIG",default=configSectionMap("paths")['runinfo_folder_quantification'])
 parser.add_argument("--samplesheet", help="Overwrite samplesheet in CONFIG", default = configSectionMap("paths")['samplesheet'])
 parser.add_argument("--analysis_description", help="Overwrite analysis_description in CONFIG",default = configSectionMap("settings")['analysis_description'])
 parser.add_argument("--package", help="Overwrite package in CONFIG", default=configSectionMap('settings')['package'])
@@ -121,8 +122,8 @@ with molgenis_wrapper.Connect_Molgenis(configSectionMap('settings')['server'],
     connection._added_by_default = True
     connection._updated_by_default = True
     print('connection established')
-    rundir_QC = configSectionMap('paths')['runinfo_folder_qc']
     try:
+        rundir_QC = configSectionMap('paths')['runinfo_folder_qc']
         rundir_genotypeCalling = configSectionMap('paths')['runinfo_folder_genotypecalling']
         rundir_quantification = configSectionMap('paths')['runinfo_folder_quantification']
         package = configSectionMap('settings')['package']
