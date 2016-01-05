@@ -25,5 +25,5 @@ Python command line tool to parse all data from our PublicRNAseq pipeline into a
 For help do
 
 ```
-python run_parser.py --all
+python run_parser.py -h
 ```
