@@ -115,6 +115,7 @@ from PublicRNAseqParser import parse_output
 print('Running parse_RNAseq_parser with configuration options:')
 print((open('PublicRNAseqParser/CONFIG').read()))
   
+# make a connection to the molgenis database. This connection will be passed to the other functions
 with molgenis_wrapper.Connect_Molgenis(configSectionMap('settings')['server'],
                                 remove_pass_file = configSectionMap('settings')['remove_pass_file'],
                                 new_pass_file = configSectionMap('settings')['new_pass_file']) as connection:
