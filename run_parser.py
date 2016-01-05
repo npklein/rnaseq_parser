@@ -7,7 +7,12 @@ Created on Jul 31, 2015
 import time
 import argparse
 import random
-import configparser
+try:
+    # Python 3
+    import configparser
+except ImportError:
+    # Python 2.7
+    import ConfigParser
 from PublicRNAseqParser import molgenis_wrapper
 import sys
 import requests
@@ -35,6 +40,7 @@ parser = argparse.ArgumentParser(prog='RNAseq pipeline output parser',
                                  description='Command line interface for filling a Molgenis database with'+\
                                              'data from RNAseq analaysis tools used in an RNAseq analysis pipeline',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+# all the available options
 parser.add_argument("--all", help="Parse all tools", action='store_true')
 parser.add_argument("-a","--analyseCovariates", help="Parse analyseCovariates", action='store_true')
 parser.add_argument("-b","--bqsr", help="Parse bqsr", action='store_true')
@@ -84,14 +90,8 @@ parser.add_argument("--ENA_path", help="Change the path to ENA info file in the 
 parser.add_argument("--max_rows", help="Set the maximum amount of rows to be added at the same time", default=configSectionMap("settings")['max_rows'])
 args = parser.parse_args()
 
-if not (args.all or args.hisat or args.ena or args.variantEval or args.verifyBamID or args.verifyBamID or args.bqsr or args.analyseCovariates
-        or args.addOrReplaceReadGroups or args.samToFilteredBam or args.sortBam or args.indelRealignmentKnown or args.gatkSplitNtrim
-        or args.rMetrics_QC or args.rMetrics_genotypeCalling or args.cMetrics_QC or args.cMetrics_genotypeCalling or args.flagstat or args.md5sum
-        or args.delete_all or args.analyse_covariates or args.haplotypeCaller or args.unifiedGenotyper or args.indelRealignmentKnown or args.mergeGvcf 
-        or args.indelRealignmentKnown or args.genotypeHarmonizer or args.fastqc or args.markDuplicates or args.mergeBam or args.combineBed
-        or args.kallisto or args.gvcf or args.QC or args.genotypeCalling):
-    parser.error('No data selected to be added to the database')
-
+# overwrite the values in the config file with any values given on the command line. 
+# If none given, the overwritten value is same as current value in the config file
 with open(r'PublicRNAseqParser/CONFIG','w') as configfile:
     config.set('paths','ena',args.ENA_path)
     config.set('settings','analysis_id',args.analysis_id)
@@ -107,10 +107,10 @@ with open(r'PublicRNAseqParser/CONFIG','w') as configfile:
     config.set('settings','experiment_type',args.experiment_type)
     config.set('settings','max_rows', args.max_rows)
     config.write(configfile)    
-# This is imported here because otherwise if --max_rows is used it won't be set until the second time you run it, as 
-# the input file will already be read
+    
+# This is imported here instead of at the top because if --max_rows is used 
+# it won't be set until the second time you run it, as the input file will already be read
 from PublicRNAseqParser import parse_output
-
 
 print('Running parse_RNAseq_parser with configuration options:')
 print((open('PublicRNAseqParser/CONFIG').read()))
@@ -210,10 +210,8 @@ with molgenis_wrapper.Connect_Molgenis(configSectionMap('settings')['server'],
         parse_output.parse_variantCaller('UnifiedGenotyper', rundir_QC, connection, package)
     if args.gvcf:
         parse_output.parse_variantCaller('GenotypeGvcf', rundir_genotypeCalling, connection, package)
-    '''
     if args.mergeGvcf:
         parse_output.parse_mergeGvcf(rundir_genotypeCalling, connection, package)
-    '''
     if args.genotypeHarmonizer:
         parse_output.parse_genotypeHarmonizer(rundir_genotypeCalling, connection, package)
     if args.fastqc:
