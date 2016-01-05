@@ -3,15 +3,7 @@ Created on Jul 31, 2015
 
 @author: Niek
 '''
-tao = ['Thus spake the Master Programmer: "When you have learned to snatch the error code from the trap frame, it will be time for you to leave."',
-       'Thus spake the Master Programmer: "After three days without programming, life becomes meaningless."',
-       'Thus spake the Master Programmer: "When a program is being tested, it is too late to make design changes."',
-       'Thus spake the Master Programmer: "A well-written program is its own Heaven; a poorly-written program is its own Hell."',
-       'Thus spake the Master Programmer: "Though a program be but three lines long, someday it will have to be maintained."',
-       'Thus spake the Master Programmer: "Let the programmers be many and the managers few -- then all will be productive."',
-       'Thus spake the Master Programmer: "You can demonstrate a program for a corporate executive, but you can\'t make him computer literate."',
-       'Thus spake the Master Programmer: "Without the wind, the grass does not move. Without software hardware is useless."',
-       'Thus spake the Master Programmer: "Time for you to leave."']
+
 import time
 import argparse
 import random
@@ -42,7 +34,6 @@ def configSectionMap(section):
 parser = argparse.ArgumentParser(prog='RNAseq pipeline output parser',
                                  description='Command line interface for filling a Molgenis database with'+\
                                              'data from RNAseq analaysis tools used in an RNAseq analysis pipeline',
-                                 epilog=tao[random.randint(0,len(tao)-1)],
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--all", help="Parse all tools", action='store_true')
 parser.add_argument("-a","--analyseCovariates", help="Parse analyseCovariates", action='store_true')
