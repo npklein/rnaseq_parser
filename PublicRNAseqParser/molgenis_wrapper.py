@@ -102,21 +102,21 @@ class Connect_Molgenis():
                 data = dict([a, str(x)] for a, x in data.items() if len(str(x).strip())>0)
                 return data
                         
-            def _logging(self, entity_name, add_type):
+            def _logging(self, entity, add_type):
                 '''Add datetime and added by to entity row or file row
                 
-                entity_name (string): Name of the entity
+                entity (string): Name of the entity
                 add_type (string): Either entity_row or file'''
                 if add_type == 'entity_row': 
-                    message = time.strftime('%H:%M:%S', time.gmtime(timeit.default_timer()-self.time_start))+' - Add row to entity '+entity_name+'. Total: '+str(self.added_rows)
+                    message = time.strftime('%H:%M:%S', time.gmtime(timeit.default_timer()-self.time_start))+' - Add row to entity '+entity+'. Total: '+str(self.added_rows)
                 elif add_type == 'file':
-                    message = time.strftime('%H:%M:%S', time.gmtime(timeit.default_timer()-self.time_start))+ ' - Add a file to '+entity_name+'. Total: '+str(self.added_files)
+                    message = time.strftime('%H:%M:%S', time.gmtime(timeit.default_timer()-self.time_start))+ ' - Add a file to '+entity+'. Total: '+str(self.added_files)
                 else:
                     raise ValueError('add_type can only be entity_row or file')
                 self.logger.debug(message)
                 
-            def _check_duplicate(self, entity_name, data):    
-                meta_data = self.get_entity_meta_data(entity_name)
+            def _check_duplicate(self, entity, data):    
+                meta_data = self.get_entity_meta_data(entity)
                 unique_attributes = []
                 for attribute in meta_data['attributes']:
                     if meta_data['attributes'][attribute]['unique'] == True:
@@ -136,21 +136,21 @@ class Connect_Molgenis():
                         raise TypeError('data should be of type dict, list or tuple')
                 duplicate_ids = []
                 to_remove = []
-                for result in self.session.get(entity_name,num=10000):
+                for result in self.session.get(entity,num=10000):
                     if attribute in result and result[attribute] in id_list:
                         if isinstance(data,dict):
-                            return {},[result[self.get_id_attribute(entity_name)]]
+                            return {},[result[self.get_id_attribute(entity)]]
                         duplicate_ids.append(result[attribute])
                         to_remove.append(id_list.index(result[attribute]))
                 for index in sorted(to_remove, reverse=True):
                     del(data[index])   
                 return data, duplicate_ids
                                          
-            def add(self, entity_name, data, files = {}):
+            def add(self, entity, data, files = {}):
                 '''Add one or multiple rows to an entity, or add a file
                 
                 Args:
-                    entity_name (string): Name of the entity where row should be added
+                    entity (string): Name of the entity where row should be added
                     data (list or dict): To add multiple rows: list of dicts with Key = column name, value = column value
                                          To add one row: dict with Key = column name, value = column value
                     files -- dictionary containing file attribute values for the entity row.
@@ -173,18 +173,22 @@ class Connect_Molgenis():
                     data = [data]
                 if len(data) == 0:
                     raise ValueError('data_list is an empty list, needs to contain a dictionary')
-                data,duplicate_ids = self._check_duplicate(entity_name, data)
+                data,duplicate_ids = self._check_duplicate(entity, data)
                 sanitized_data_list = [self._sanitize_data(data,'datetime_added','added_by') for data in data]
                 # post to the entity with the json data
                 if len(sanitized_data_list) == 1 and len(sanitized_data_list[0]) == 0:
                     return None
-                added_ids = self.session.add_all(entity_name, sanitized_data_list)
+                try:
+                    added_ids = self.session.add_all(entity, sanitized_data_list)
+                except requests.exceptions.HTTPError as e:
+                    print(e.response.json())
+                    raise
                 self.added_rows += len(sanitized_data_list)
                 added_ids += duplicate_ids
-                self._logging(entity_name,'entity_row')
+                self._logging(entity,'entity_row')
                 return added_ids
 
-            def add_file(self, file_path, description, entity_name, data={}, file_name=None):
+            def add_file(self, file_path, description, entity, data={}, file_name=None):
                 '''Add a file to entity File. (io stream is possible but not implemented, see molgenis_api.py in archive for example)
                 
                 Args:
@@ -197,8 +201,8 @@ class Connect_Molgenis():
                     file_id (string): ID if the file that got uploaded (for xref)
                     
                 '''
-                self._logging(entity_name,'file')
-                data, added_id = self._check_duplicate(entity_name,data)
+                self._logging(entity,'file')
+                data, added_id = self._check_duplicate(entity,data)
                 if added_id:
                     return added_id
                 data.update({'description': description})
@@ -208,17 +212,17 @@ class Connect_Molgenis():
                 if not os.path.isfile(file_path):
                     self.logger.error('File not found: '+str(file_path))
                     raise IOError('File not found: '+str(file_path))
-                added_id = self.session.add(entity_name, data=data,
+                added_id = self.session.add(entity, data=data,
                                             files={'attachment':(os.path.basename(file_path), open(file_path,'rb'))})
                 self.added_files += 1
                 return added_id
 
                        
-            def get(self, entity_name, query=None,attributes=None, num=100, start=0, sortColumn=None, sortOrder=None):
+            def get(self, entity, query=None,attributes=None, num=100, start=0, sortColumn=None, sortOrder=None):
                 '''Get row(s) from entity with a query
                 
                 Args:
-                    entity_name (string): Name of the entity where get query should be run on
+                    entity (string): Name of the entity where get query should be run on
                     query (list): List of dictionaries with as keys:values -> [{'field':column name, 'operator':'EQUALS', 'value':value}]
                     attributes (?): Attributes to return
                     num (int): Number of results to return
@@ -228,38 +232,38 @@ class Connect_Molgenis():
                 Returns:
                     result (dict): json dictionary of retrieve data
                 '''
-                entity_name = entity_name.strip()
+                entity = entity.strip()
                 if query:
                     if len(query) == 0:
                         self.logger.error('Can\'t search with empty query')
                         raise ValueError('Can\'t search with empty query')
                     try:
-                        items = self.session.get(entity_name, q = query, attributes=attributes, num=num, start=start, sortColumn=sortColumn, sortOrder=sortOrder)
+                        items = self.session.get(entity, q = query, attributes=attributes, num=num, start=start, sortColumn=sortColumn, sortOrder=sortOrder)
                     except requests.exceptions.HTTPError as e:
                         self.logger.debug(e.response.json())
                         raise
                 else:
-                    items = self.session.get(entity_name,attributes=attributes, num=num, start=start, sortColumn=sortColumn, sortOrder=sortOrder)         
+                    items = self.session.get(entity,attributes=attributes, num=num, start=start, sortColumn=sortColumn, sortOrder=sortOrder)         
                 return items
           
-            def update_entity_rows(self, entity_name, data, row_id = None, query_list=None):
+            def update_entity_rows(self, entity, data, row_id = None, query_list=None):
                 '''Update an entity row, either by giving the attribute id name and the id for the row to update, or a query for which row to update
             
                 Args:
-                    entity_name (string): Name of the entity to update
+                    entity (string): Name of the entity to update
                     data (dict):  Key = column name, value = column value
                     id_attribute: The id_attribute name for the entity which you want to update the row
                     row_id: The row id value (from id_attribute)
                     query_list (list): List of dictionaries which contain query to select the row to update (see documentation of get())  (def:None)
-                    validate_json (bool): If True, check if the given data keys correspond with the column names of entity_name. (def: False)
+                    validate_json (bool): If True, check if the given data keys correspond with the column names of entity. (def: False)
                 '''
                 data = self._sanitize_data(data,'datetime_last_updated','updated_by')
-                id_attribute = self.get_id_attribute(entity_name)
+                id_attribute = self.get_id_attribute(entity)
                 if row_id:
                     if query_list:
                         logging.warn('Both row_id and query_list set, will use only row_id')
                     try:
-                        server_response = self.session.update(entity_name, row_id, data)
+                        server_response = self.session.update(entity, row_id, data)
                     except requests.exceptions.HTTPError as e:
                         self.logger.debug(e.response.json())
                         raise
@@ -268,67 +272,67 @@ class Connect_Molgenis():
                     queries = []
                     for query in query_list:
                         queries.append(self._sanitize_data(query,'datetime_last_updated','updated_by'))
-                    entity_data = self.get(entity_name, queries)
+                    entity_data = self.get(entity, queries)
                     if len(entity_data) == 0:
                         self.logger.error('Query returned 0 results, no row to update.')
                         raise Exception('Query returned 0 results, no row to update.')
                     for entity_item in entity_data:
-                        server_response = self.session.update(entity_name, str(entity_item[str(id_attribute)]), data)
+                        server_response = self.session.update(entity, str(entity_item[str(id_attribute)]), data)
                         server_response = server_response
                     return server_response
                 else:
                     raise ValueError('update_entity_rows function called without setting either row_id or query_list (one of the two needed to know which row to update)')
         
-            def get_entity_meta_data(self, entity_name):
+            def get_entity_meta_data(self, entity):
                 '''Get metadata from entity
                 
                 Args:
-                    entity_name (string): Name of the entity to get meta data of
+                    entity (string): Name of the entity to get meta data of
                 
                 Returns:
                     result (dict): json dictionary of retrieve data
                 '''
-                if entity_name in self.entity_meta_data:
-                    return self.entity_meta_data[entity_name]
-                entity_meta_data = self.session.get_entity_meta_data(entity_name)
-                self.entity_meta_data[entity_name] = entity_meta_data
+                if entity in self.entity_meta_data:
+                    return self.entity_meta_data[entity]
+                entity_meta_data = self.session.get_entity_meta_data(entity)
+                self.entity_meta_data[entity] = entity_meta_data
                 return entity_meta_data
         
-            def get_column_names(self, entity_name):
+            def get_column_names(self, entity):
                 '''Get the column names from the entity
                 
                 Args:
-                    entity_name (string): Name of the entity to get column names of
+                    entity (string): Name of the entity to get column names of
                 Returns:
-                    meta_data(list): List with all the column names of entity_name
+                    meta_data(list): List with all the column names of entity
                 '''
-                entity_meta_data = self.get_entity_meta_data(entity_name)
+                entity_meta_data = self.get_entity_meta_data(entity)
                 attributes = entity_meta_data['attributes']
                 return list(attributes.keys())
             
-            def get_id_attribute(self, entity_name):
+            def get_id_attribute(self, entity):
                 '''Get the id attribute name'''
-                entity_meta_data = self.get_entity_meta_data(entity_name)
+                entity_meta_data = self.get_entity_meta_data(entity)
                 return entity_meta_data['idAttribute']
             
-            def get_column_meta_data(self, entity_name, column_name):
-                '''Get the meta data for column_name of entity_name
+            def get_column_meta_data(self, entity, column_name):
+                '''Get the meta data for column_name of entity
                 
                 Args:
-                    entity_name (string): Name of the entity 
+                    entity (string): Name of the entity 
                     column_name (string): Name of the column
                 Returns:
-                    List with all the column names of entity_name
+                    List with all the column names of entity
                 '''
-                if entity_name+column_name in self.column_meta_data:
-                    return self.column_meta_data[entity_name+column_name]
-                server_response = self.session.get(self.api_v1_url+'/'+entity_name+'/meta/'+column_name)
+                if entity+column_name in self.column_meta_data:
+                    return self.column_meta_data[entity+column_name]
+                server_response = self.session.get(self.api_v1_url+'/'+entity+'/meta/'+column_name)
                 column_meta_data = server_response.json()
-                self.column_meta_data[entity_name+column_name] = column_meta_data
+                self.column_meta_data[entity+column_name] = column_meta_data
                 return column_meta_data
             
-            def get_column_type(self, entity_name, column_name):
-                column_meta_data = self.get_column_meta_data(entity_name, column_name)
+            def get_column_type(self, entity, column_name):
+                column_meta_data = self.get_column_meta_data(entity, column_name)
                 return column_meta_data['fieldType']
                    
             def delete_all_rows_of_all_entities(self, package):
@@ -342,47 +346,47 @@ class Connect_Molgenis():
                     raise AttributeError('package can\'t be None, is '+str(package))
                 server_response = self.get_all_entity_data()
                 for entity in server_response.json()['items']:
-                    entity_name = entity['fullName']
-                    if package in entity_name and not bool(entity['abstract']):
-                        self.logger.info('Deleting all rows from',entity_name)
+                    entity = entity['fullName']
+                    if package in entity and not bool(entity['abstract']):
+                        self.logger.info('Deleting all rows from',entity)
                         try:
-                            self.delete_all_entity_rows(entity_name)
+                            self.delete_all_entity_rows(entity)
                         except Exception as e:
                             self.logger.warning(str(e))
             
-            def delete_all_entity_rows(self,entity_name):
+            def delete_all_entity_rows(self,entity):
                 '''delete all entity rows'''
-                items = self.get(entity_name,num=10000)
+                items = self.get(entity,num=10000)
                 while len(items) > 0:
-                    self.delete_entity_data(entity_name,items)
-                    items = self.get(entity_name,num=10000)
-            def delete_entity_rows(self, entity_name, query):
+                    self.delete_entity_data(entity,items)
+                    items = self.get(entity,num=10000)
+            def delete_entity_rows(self, entity, query):
                 '''delete entity rows
             
                 Args:
-                    entity_name (string): Name of the entity to update
+                    entity (string): Name of the entity to update
                     query (list): List of dictionaries which contain query to select the row to update (see documentation of get())
                 '''
-                items = self.get(entity_name, query)
+                items = self.get(entity, query)
                 if len(items) == 0:
                     self.logger.error('Query returned 0 results, no row to delete.')
                     raise Exception('Query returned 0 results, no row to delete.')
-                self.delete_entity_data(entity_name, items)
+                self.delete_entity_data(entity, items)
         
-            def delete_entity_data(self, entity_name, items):
+            def delete_entity_data(self, entity, items):
                 '''delete entity data
                 
                 Args:
                     entity_data (dict): A dictionary with at least key:"items", value:<dict with column IDs>. All items in this dict will be deleted
-                    entity_name (string): Name of entity to delete from
+                    entity (string): Name of entity to delete from
                     query_used (string): Incase entity_data was made with a query statement, the query used can be given for more detailed error prints (def: None)
                 '''
-                id_attribute = self.get_id_attribute(entity_name)
+                id_attribute = self.get_id_attribute(entity)
                 for rows in items:
                     row_id = rows[id_attribute]
                     try:
-                        self.logger.debug('Deleted row from: '+str(entity_name))
-                        self.session.delete(entity_name.strip(),row_id)
+                        self.logger.debug('Deleted row from: '+str(entity))
+                        self.session.delete(entity.strip(),row_id)
                     except requests.exceptions.HTTPError as e:
                         self.logger.debug(e.response.json())
                         raise

@@ -173,14 +173,14 @@ def parse_rnaseq_tools(sh_file_path,connection,package):
             internalId = None
         project = re.search('project="(.*?)"',sh_text).group(1)
         if not sh_id:
-            sh_id = connection.add_file(file_path=basefile+'.sh', description='.sh script that was used to get the data', entity_name=package+'File',
+            sh_id = connection.add_file(file_path=basefile+'.sh', description='.sh script that was used to get the data', entity=package+'File',
                             data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+sh_file.replace(' ','_')})
 
         if not err_id:
-            err_id = connection.add_file(file_path=basefile+'.err', description='file with messages printed to stderr by program', entity_name=package+'File',
+            err_id = connection.add_file(file_path=basefile+'.err', description='file with messages printed to stderr by program', entity=package+'File',
                             data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.err').replace(' ','_')})
         if not out_id:
-            out_id = connection.add_file(file_path=basefile+'.out', description='file with messages printed to stdout by program',entity_name=package+'File',
+            out_id = connection.add_file(file_path=basefile+'.out', description='file with messages printed to stdout by program',entity=package+'File',
                             data={'sample_file_id':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)+(basefile+'.out').replace(' ','_')})
 
         yield sh_text, err_text, out_text, runtime, sample_name, internalId, project, sh_id, err_id, out_id, tool_ids
@@ -364,9 +364,9 @@ def parse_variantEval(runinfo_folder_QC,connection,package):
                             data_sanitized[key] = value
                     to_add.append(data_sanitized)
                     # table name to entity name example: VariantSummary to Variant_summary
-                    entity_name = re.sub( '(?<!^)(?=[A-Z])', '_', table_name ).lower() 
+                    entity = re.sub( '(?<!^)(?=[A-Z])', '_', table_name ).lower() 
                 table_name_previous = table_name
-            variant_eval_ids[entity_name.lower()] += add_multiple_rows(entity=package+entity_name,data=to_add,
+            variant_eval_ids[entity.lower()] += add_multiple_rows(entity=package+entity,data=to_add,
                                                                                 connection=connection)[0]
 
         data = {'indel_summary':variant_eval_ids['indel_summary'], 'variant_comp_overlap':variant_eval_ids['comp_overlap'],'indel_length_histogram':variant_eval_ids['indel_length_histogram'],
@@ -506,7 +506,7 @@ def parse_variantCaller(variant_caller, runinfo_folder_QC,connection,package):
         else:
             connection.update_entity_rows(package+'Samples', data={'variantCaller':added_id}, row_id = str(project)+'-'+str(sample_name)+'-'+str(analysis_id))
 def parse_fastqc(runinfo_folder_QC,connection,package):
-    '''not working yet, row too long'''
+    '''todo: readlength can be 50 instead of 30-50, .rstrip to ','.join()'''
     print('Start fastqc')
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project,sh_id, err_id, out_id, tool_ids in parse_rnaseq_tools(os.path.join(runinfo_folder_QC,'FastQC*.sh'),connection, package):
         fastqc_outdir = re.search('--outdir (\S+)',sh_text).group(1)
@@ -532,7 +532,7 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
         fastqc_groups = re.search('Filename\s+(\S+)\n'\
                                  +'File type\s+(.+)\n'\
                                  +'Encoding\s+(.+)\n'\
-                                 +'Total Sequences\s+(\d+)\n'\
+                                 +'Total Sequences\s+(\S+)\n'\
                                  +'Sequences flagged as poor quality\s+(\d+)\n'\
                                  +'Sequence length\s+(\d+-\d+)\n'\
                                  +'%GC\s+(\d+)\n.*?'\
@@ -605,20 +605,27 @@ def parse_fastqc(runinfo_folder_QC,connection,package):
             s_l = line.split('\t')
             to_add.append({'seq':s_l[0], 'count':s_l[1], 'p_value':s_l[2], 'obs_exp_max':s_l[3], 'max_obs_exp_position':s_l[4]})
         fastqc_ids['kc'] = ','.join(add_multiple_rows(package+'Kmer_content',to_add,connection,True))
-
+        if '-' in fastqc_groups.group(6):
+            seq_length_min = fastqc_groups.group(6).split('-')[0]
+        else:
+            seq_length_min = fastqc_groups.group(6)
+        if '-' in fastqc_groups.group(6):
+            seq_length_max = fastqc_groups.group(6).split('-')[1]
+        else:
+            seq_length_max = fastqc_groups.group(6)
         data = {'adapter_content_graph':graphs['adapter_content'],'kmer_content_graph':graphs['kmer_profiles'],'per_base_n_content_graph':graphs['per_base_n_content'],
                 'per_base_seq_content_graph':graphs['per_base_sequence_content'],'per_base_seq_qual_graph':graphs['per_base_quality'],'per_seq_GC_content_graph':graphs['per_sequence_gc_content'],
                 'per_seq_qual_scores_graph':graphs['per_sequence_quality'],'per_tile_seq_qual_graph':graphs['per_tile_quality'],'seq_duplication_levels_graph':graphs['duplication_levels'],
                 'seq_length_distribution_graph':graphs['sequence_length_distribution'],
-                'total_deduplicated_perc':total_deduplicated_perc,'adapter_content':fastqc_ids['ac'].rstrip(','),'adapter_content_check':image_data['Adapter Content'][1],'basic_statistics_check':image_data['Basic Statistics'][1],'gc_perc':fastqc_groups.group(7),
-                'kmer_content':fastqc_ids['kc'].rstrip(','),'kmer_content_check':image_data['Kmer Content'][1],'overrepresented_seqs':fastqc_ids['os'].rstrip(','),
-                'overrepresented_seqs_check':image_data['Overrepresented sequences'][1],'per_base_N_content':fastqc_ids['pbnc'].rstrip(','),'per_base_n_content_check':image_data['Per base N content'][1],'per_base_seq_content':fastqc_ids['pbsc'].rstrip(','),
-                'per_base_seq_content_check':image_data['Per base sequence content'][1],'per_base_seq_qual':fastqc_ids['pbsq'].rstrip(','),
-                'per_base_seq_qual_check':image_data['Per base sequence quality'][1],'per_seq_GC_content':fastqc_ids['psgc'].rstrip(','),'per_seq_gc_content_check':image_data['Per sequence GC content'][1],
-                'per_seq_qual_scores':fastqc_ids['psqs'].rstrip(','),'per_seq_qual_scores_check':image_data['Per sequence quality scores'][1],'per_tile_seq_qual':fastqc_ids['ptsq'].rstrip(','),
-                'per_tile_seq_qual_check':image_data['Per tile sequence quality'][1],'seq_duplication_levels':fastqc_ids['sdl'].rstrip(','),
-                'seq_duplication_levels_check':image_data['Sequence Duplication Levels'][1],'seq_length_min':fastqc_groups.group(6).split('-')[0],'seq_length_distribution':fastqc_ids['sld'].rstrip(','),
-                'seq_length_distribution_check':image_data['Sequence Length Distribution'][1],'seqs_flagged_as_poor':fastqc_groups.group(5),'total_seqs':fastqc_groups.group(4),'seq_length_max':fastqc_groups.group(6).split('-')[1],'file_name':fastqc_groups.group(2),'file_type':fastqc_groups.group(2),'encoding':fastqc_groups.group(3),
+                'total_deduplicated_perc':total_deduplicated_perc,'adapter_content':fastqc_ids['ac'],'adapter_content_check':image_data['Adapter Content'][1],'basic_statistics_check':image_data['Basic Statistics'][1],'gc_perc':fastqc_groups.group(7),
+                'kmer_content':fastqc_ids['kc'],'kmer_content_check':image_data['Kmer Content'][1],'overrepresented_seqs':fastqc_ids['os'],
+                'overrepresented_seqs_check':image_data['Overrepresented sequences'][1],'per_base_N_content':fastqc_ids['pbnc'],'per_base_n_content_check':image_data['Per base N content'][1],'per_base_seq_content':fastqc_ids['pbsc'],
+                'per_base_seq_content_check':image_data['Per base sequence content'][1],'per_base_seq_qual':fastqc_ids['pbsq'],
+                'per_base_seq_qual_check':image_data['Per base sequence quality'][1],'per_seq_GC_content':fastqc_ids['psgc'],'per_seq_gc_content_check':image_data['Per sequence GC content'][1],
+                'per_seq_qual_scores':fastqc_ids['psqs'],'per_seq_qual_scores_check':image_data['Per sequence quality scores'][1],'per_tile_seq_qual':fastqc_ids['ptsq'],
+                'per_tile_seq_qual_check':image_data['Per tile sequence quality'][1],'seq_duplication_levels':fastqc_ids['sdl'],
+                'seq_duplication_levels_check':image_data['Sequence Duplication Levels'][1],'seq_length_min':seq_length_min,'seq_length_distribution':fastqc_ids['sld'],
+                'seq_length_distribution_check':image_data['Sequence Length Distribution'][1],'seqs_flagged_as_poor':fastqc_groups.group(5),'total_seqs':fastqc_groups.group(4),'seq_length_max':seq_length_max,'file_name':fastqc_groups.group(2),'file_type':fastqc_groups.group(2),'encoding':fastqc_groups.group(3),
                 'err_file':err_id,'out_file':out_id,'runtime':runtime,'sh_script':sh_id,'internalId':internalId,'internalId_sampleid':internalId+'_'+str(project)+'-'+str(sample_name)}
         added_id = connection.add(package+'FastQC', data)[0]
         fastqc_data = connection.get(package+'fastqc', [{'field':'id','operator':'EQUALS','value':str(project)+'-'+str(sample_name)+'-'+str(analysis_id)}])

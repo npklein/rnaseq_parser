@@ -63,7 +63,7 @@ def parse_rnaseq_tools(sh_file_path):
         project = re.search('project="(.*?)"',sh_text).group(1)
 
         yield sh_text, err_text, out_text, runtime, sample_name, internalId, project
-def parse_fastqc(runinfo_folder_QC,package):
+def parse_fastqc(runinfo_folder_QC):
     '''not working yet, row too long'''
     print('Start fastqc')
     for sh_text, err_text, out_text, runtime, sample_name, internalId, project in parse_rnaseq_tools(os.path.join(runinfo_folder_QC,'FastQC*.sh')):
