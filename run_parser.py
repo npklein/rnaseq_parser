@@ -3,19 +3,16 @@ Created on Jul 31, 2015
 
 @author: Niek
 '''
-tao = ['Thus spake the Master Programmer: "When you have learned to snatch the error code from the trap frame, it will be time for you to leave."',
-       'Thus spake the Master Programmer: "After three days without programming, life becomes meaningless."',
-       'Thus spake the Master Programmer: "When a program is being tested, it is too late to make design changes."',
-       'Thus spake the Master Programmer: "A well-written program is its own Heaven; a poorly-written program is its own Hell."',
-       'Thus spake the Master Programmer: "Though a program be but three lines long, someday it will have to be maintained."',
-       'Thus spake the Master Programmer: "Let the programmers be many and the managers few -- then all will be productive."',
-       'Thus spake the Master Programmer: "You can demonstrate a program for a corporate executive, but you can\'t make him computer literate."',
-       'Thus spake the Master Programmer: "Without the wind, the grass does not move. Without software hardware is useless."',
-       'Thus spake the Master Programmer: "Time for you to leave."']
+
 import time
 import argparse
 import random
-import configparser
+try:
+    # Python 3
+    import configparser
+except ImportError:
+    # Python 2.7
+    import ConfigParser
 from PublicRNAseqParser import molgenis_wrapper
 import sys
 import requests
@@ -42,8 +39,8 @@ def configSectionMap(section):
 parser = argparse.ArgumentParser(prog='RNAseq pipeline output parser',
                                  description='Command line interface for filling a Molgenis database with'+\
                                              'data from RNAseq analaysis tools used in an RNAseq analysis pipeline',
-                                 epilog=tao[random.randint(0,len(tao)-1)],
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+# all the available options
 parser.add_argument("--all", help="Parse all tools", action='store_true')
 parser.add_argument("-a","--analyseCovariates", help="Parse analyseCovariates", action='store_true')
 parser.add_argument("-b","--bqsr", help="Parse bqsr", action='store_true')
@@ -80,6 +77,7 @@ parser.add_argument("--delete_all", help="Delete all rows of all entites of pack
 parser.add_argument("--analysis_id", help="Overwrite current analysis ID in CONFIG",default=configSectionMap("settings")['analysis_id'])
 parser.add_argument("--runinfo_folder_qc", help="Overwrite runinfo_folder_qc in CONFIG",default=configSectionMap("paths")['runinfo_folder_qc'])
 parser.add_argument("--runinfo_folder_genotypecalling", help="Overwrite runinfo_folder_genotypecalling in CONFIG",default=configSectionMap("paths")['runinfo_folder_genotypecalling'])
+parser.add_argument("--runinfo_folder_quantification", help="Overwrite runinfo_folder_quantification in CONFIG",default=configSectionMap("paths")['runinfo_folder_quantification'])
 parser.add_argument("--samplesheet", help="Overwrite samplesheet in CONFIG", default = configSectionMap("paths")['samplesheet'])
 parser.add_argument("--analysis_description", help="Overwrite analysis_description in CONFIG",default = configSectionMap("settings")['analysis_description'])
 parser.add_argument("--package", help="Overwrite package in CONFIG", default=configSectionMap('settings')['package'])
@@ -92,14 +90,8 @@ parser.add_argument("--ENA_path", help="Change the path to ENA info file in the 
 parser.add_argument("--max_rows", help="Set the maximum amount of rows to be added at the same time", default=configSectionMap("settings")['max_rows'])
 args = parser.parse_args()
 
-if not (args.all or args.hisat or args.ena or args.variantEval or args.verifyBamID or args.verifyBamID or args.bqsr or args.analyseCovariates
-        or args.addOrReplaceReadGroups or args.samToFilteredBam or args.sortBam or args.indelRealignmentKnown or args.gatkSplitNtrim
-        or args.rMetrics_QC or args.rMetrics_genotypeCalling or args.cMetrics_QC or args.cMetrics_genotypeCalling or args.flagstat or args.md5sum
-        or args.delete_all or args.analyse_covariates or args.haplotypeCaller or args.unifiedGenotyper or args.indelRealignmentKnown or args.mergeGvcf 
-        or args.indelRealignmentKnown or args.genotypeHarmonizer or args.fastqc or args.markDuplicates or args.mergeBam or args.combineBed
-        or args.kallisto or args.gvcf or args.QC or args.genotypeCalling):
-    parser.error('No data selected to be added to the database')
-
+# overwrite the values in the config file with any values given on the command line. 
+# If none given, the overwritten value is same as current value in the config file
 with open(r'PublicRNAseqParser/CONFIG','w') as configfile:
     config.set('paths','ena',args.ENA_path)
     config.set('settings','analysis_id',args.analysis_id)
@@ -115,14 +107,15 @@ with open(r'PublicRNAseqParser/CONFIG','w') as configfile:
     config.set('settings','experiment_type',args.experiment_type)
     config.set('settings','max_rows', args.max_rows)
     config.write(configfile)    
-# This is imported here because otherwise if --max_rows is used it won't be set until the second time you run it, as 
-# the input file will already be read
+    
+# This is imported here instead of at the top because if --max_rows is used 
+# it won't be set until the second time you run it, as the input file will already be read
 from PublicRNAseqParser import parse_output
-
 
 print('Running parse_RNAseq_parser with configuration options:')
 print((open('PublicRNAseqParser/CONFIG').read()))
   
+# make a connection to the molgenis database. This connection will be passed to the other functions
 with molgenis_wrapper.Connect_Molgenis(configSectionMap('settings')['server'],
                                 remove_pass_file = configSectionMap('settings')['remove_pass_file'],
                                 new_pass_file = configSectionMap('settings')['new_pass_file']) as connection:
@@ -130,8 +123,8 @@ with molgenis_wrapper.Connect_Molgenis(configSectionMap('settings')['server'],
     connection._added_by_default = True
     connection._updated_by_default = True
     print('connection established')
-    rundir_QC = configSectionMap('paths')['runinfo_folder_qc']
     try:
+        rundir_QC = configSectionMap('paths')['runinfo_folder_qc']
         rundir_genotypeCalling = configSectionMap('paths')['runinfo_folder_genotypecalling']
         rundir_quantification = configSectionMap('paths')['runinfo_folder_quantification']
         package = configSectionMap('settings')['package']
@@ -217,10 +210,8 @@ with molgenis_wrapper.Connect_Molgenis(configSectionMap('settings')['server'],
         parse_output.parse_variantCaller('UnifiedGenotyper', rundir_QC, connection, package)
     if args.gvcf:
         parse_output.parse_variantCaller('GenotypeGvcf', rundir_genotypeCalling, connection, package)
-    '''
     if args.mergeGvcf:
         parse_output.parse_mergeGvcf(rundir_genotypeCalling, connection, package)
-    '''
     if args.genotypeHarmonizer:
         parse_output.parse_genotypeHarmonizer(rundir_genotypeCalling, connection, package)
     if args.fastqc:
