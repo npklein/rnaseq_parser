@@ -1,4 +1,6 @@
 
+OLD VERSION, NEW AT ttps://github.com/molgenis/ngs-utils/rnaseq_parser
+===========
 
 parse_rnaseq_output
 --------
