@@ -78,9 +78,36 @@ class Connect_Molgenis():
                         security.remove_secrets_file()
                     security.require_username('Username')
                     security.require_password('Password')
+                    if not server_url.endswith('api/'):
+                        if not server_url.endswith('/'):
+                            server_url += '/'
+                        server_url += 'api/'
                     self.session = molgenis.Session(server_url)
                     self.logger.debug('Trying to log in with data from '+str(security.PASSPHRASE_FILE) +' to: '+server_url+' with username: '+'*'*len(security.retrieve('Username'))+' password: '+'*'*len(security.retrieve('Password')))
-                    self.session.login(security.retrieve('Username'), security.retrieve('Password'))
+                    
+                    try:
+                        self.session.login(security.retrieve('Username'), security.retrieve('Password'))
+                    except requests.exceptions.HTTPError as e:
+                        if 'Not Found for url' in str(e):
+                            self.logger.debug('login failed, trying again')
+                            if server_url.startswith('http'):
+                                server_url = server_url.replace('http','https')
+                                self.session = molgenis.Session(server_url)
+                            elif server_url.startswith('https'):
+                                server_url = server_url.replace('http','https')
+                                self.session = molgenis.Session(server_url)
+                            self.logger.debug('Trying to log in with data from '+str(security.PASSPHRASE_FILE) +' to: '+server_url+' with username: '+'*'*len(security.retrieve('Username'))+' password: '+'*'*len(security.retrieve('Password')))
+                            try:
+                                self.session.login(security.retrieve('Username'), security.retrieve('Password'))
+                            except requests.exceptions.HTTPError as e:
+                                if 'Unauthorized for url' in str(e):
+                                    raise requests.exceptions.HTTPError(str(e)+'\nInvalid username or password')
+                                else:
+                                    raise
+                        elif 'Unauthorized for url' in str(e):
+                            raise requests.exceptions.HTTPError(str(e)+'\nInvalid username or password')
+                        else:
+                            raise
                     self.entity_meta_data = {}
                     self.column_meta_data = {}
                     self.added_rows = 0
@@ -117,6 +144,7 @@ class Connect_Molgenis():
                 
             def _check_duplicate(self, entity, data):    
                 meta_data = self.get_entity_meta_data(entity)
+                print(meta_data)
                 unique_attributes = []
                 for attribute in meta_data['attributes']:
                     if meta_data['attributes'][attribute]['unique'] == True:
